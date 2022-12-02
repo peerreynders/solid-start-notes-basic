@@ -6,7 +6,41 @@ The longer term goal is to eventually leverage island routing to maximum effect 
 ```shell
 $ npm i
 
-$ npm run dev
+added 359 packages, and audited 360 packages in 3s
+
+37 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+$ npm run dev -- --open
+
+> solid-start-notes-basic@0.0.0 dev
+> solid-start dev
+
+ solid-start dev 
+ version  0.2.6
+ adapter  node
+
+  VITE v3.2.4  ready in 530 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+  ➜  Inspect: http://localhost:3000/__inspect/
+
+
+  ➜  Page Routes:
+     ┌─ http://localhost:3000
+     ├─ http://localhost:3000/*404
+     ├─ http://localhost:3000/new
+     ├─ http://localhost:3000/notes/:id
+     └─ http://localhost:3000/notes/:id/edit
+
+  ➜  API Routes:
+     └─  http://localhost:3000/api/notes GET
+
+  > Server modules: 
+   http://localhost:3000/_m/*
 ```
 ---
 
