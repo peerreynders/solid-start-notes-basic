@@ -2,7 +2,6 @@ import { useNoteList } from '~/components/note-list-context';
 
 export default function NoteEmpty() {
   const { postRedirect: handle } = useNoteList();
-
   handle.complete();
 
   return (

@@ -1,7 +1,7 @@
 import { APIEvent, json } from 'solid-start/api';
-import { searchNotes } from '../../server/notes-db';
-import { excerpt } from '../../server/excerpt';
-import { NoteView } from '../../types';
+import { searchNotes } from '~/server/notes-db';
+import { excerpt } from '~/server/excerpt';
+import { NoteView } from '~/types';
 
 const addSummary = (collect: NoteView[], note: Partial<NoteView>) => {
   note.summary =  note.body ? excerpt(note.body) : '';
