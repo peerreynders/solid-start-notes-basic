@@ -1,4 +1,17 @@
 # SolidStart Notes (basic)
+
+- [Overview](#overview)
+- [SolidStart Highlights](#solidstart-highlights)
+  - [File Based Routing](#file-based-routing)
+  - [API Routing](#api-routing)
+  - [Server Data](#server-data)
+  - [Actions](#server-actions)
+- [Notes](#notes)
+- [Observations](#observations)
+  - [Suspense/Show Interaction](#suspenseshow-interaction)
+  - [Suspense Leaks](#suspense-leaks)
+
+## Overview
 First exploration of SolidStart (beta 0.2.6). The app is a port of the December 2020 [React Server Components Demo](https://github.com/reactjs/server-components-demo) ([LICENSE](https://github.com/reactjs/server-components-demo/blob/main/LICENSE); [no pg fork](https://github.com/pomber/server-components-demo/)) but here it's just a basic client side routing implementation. It doesn't use a database but just holds the notes in server memory synchronized to the `notes-db.json` file. This app is not intended to be deployed but simply serves as an experimental platform.
 
 The longer term goal is to eventually leverage island routing to maximum effect once it's more stable and documented ([nksaraf](https://github.com/nksaraf) already demonstrated that [capability](https://github.com/solidjs/solid-start/tree/notes/examples/notes) ([live demo](https://notes-server-components.vinxi.workers.dev/)) with a non-standard branch of SolidStart).
@@ -45,6 +58,8 @@ $ npm run dev -- --open
 ---
 
 ## SolidStart highlights
+<a name="file-based-routing"/>
+
 [**File Based Routing**](https://start.solidjs.com/core-concepts/routing#creating-new-pages)
 - `src/root.tsx` (layout shared by all routes; route content is projected via the [`<FileRoutes />`](https://start.solidjs.com/api/FileRoutes) component) 
 - `src/routes/(note-empty).tsx` ➔ `/` (Home/root route; just an "empty" panel)
@@ -52,11 +67,17 @@ $ npm run dev -- --open
 - `src/routes/notes/[id]/(note).tsx` ➔ `/notes/{id}` (Route showing the details of the currently active note `id`)
 - `src/routes/notes/[id]/edit/(note-edit).tsx` ➔ `/notes/{id}/edit` (Route for modifying note `id`)
 
+<a name="api-routing"/>
+
 [**API Routing**](https://start.solidjs.com/core-concepts/api-routes)
 - `src/routes/api/notes.ts` [`notes.ts`](./src/routes/api/notes.ts) implements the `GET` API route handler that searches all notes based on their title. Used by [`note-list.tsx`](./src/components/note-list.tsx) via [`createResource`](https://www.solidjs.com/docs/latest/api#createresource).
 
+<a name="server-data"/>
+
 [**Server Data**](https://start.solidjs.com/api/createServerData)
 - `createServerData$` and [`useRouteData`](https://start.solidjs.com/api/useRouteData) is used in [`(note).tsx`](./src/routes/notes/[id]/(note).tsx) and [`(note-edit).tsx`](./src/routes/notes/[id]/edit/(note-edit).tsx) to fetch a single note by ID. 
+
+<a name="server-actions"/>
 
 [**Actions**](https://start.solidjs.com/core-concepts/actions)
 - [`createServerAction$`](https://start.solidjs.com/api/createServerAction) is used by [`note-editor.tsx`](./src/components/note-editor.tsx) to insert, update and delete a note.
@@ -85,7 +106,7 @@ $ npm run dev -- --open
 - [`<Suspense>`](https://www.solidjs.com/docs/latest/api#suspense) is used to hide its `children` while there are unresolved async events (resources being read) under it. Without a fallback the `children` are simply hidden; if a fallback is specified, the fallback is shown while the suspense boundary is waiting for the async events to settle. Any future async events (like re-fetches) will cause the fallback to be shown again (or the `children` to be hidden again).
 - [`useTransition`](https://www.solidjs.com/docs/latest/api#usetransition) and [`startTransition`](https://www.solidjs.com/docs/latest/api#starttransition) are used to suppress the `<Suspense>` hiding/fallback on **subsequent** async events (re-fetches) and instead keep the previous `children` in place until all the async events settle. For the initial render however the hiding/fallback behaviour remains in place.
 - [`<Show>`](https://www.solidjs.com/docs/latest/api#show) is typically nested inside of `<Suspense>`. While `<Suspense>` will hide its `children` when there are pending async events it doesn't prevent those children from trying to render against the pending values. So `<Show>` is used to prevent `children` from trying to render against values that aren't ready yet.
-- The `<Suspense />` boundary is triggered by a "read" on a pending resource. Given a resource `name: Resource<string>` using `name()` counts as a resource read while `name.state` does not. So using `typeof name() !== 'undefined'` in the `<Show>`'s `when` will trigger the containing suspense boundary because a resource read is attempted; therefore the `<Suspense>` `fallback` is rendered. If however `name.state === 'ready'` is used in the `<Show>`'s `when`, the `<Show>`'s `fallback` will be shown because the containing suspense boundary **is not** triggered.
+- The `<Suspense>` boundary is triggered by a "read" on a pending resource. Given a resource `name: Resource<string>` using `name()` counts as a resource read while `name.state` does not. So using `typeof name() !== 'undefined'` in the `<Show>`'s `when` will trigger the containing suspense boundary because a resource read is attempted; therefore the `<Suspense>` `fallback` is rendered. If however `name.state === 'ready'` is used in the `<Show>`'s `when`, the `<Show>`'s `fallback` will be shown because the containing suspense boundary **is not** triggered.
 
 [Playground link](https://playground.solidjs.com/anonymous/599bd23b-3be9-48cb-878f-8d6272247634)
 
@@ -138,3 +159,70 @@ function NoRead() {
 `NoRead` will show the `<Show>` `fallback` before *every* fetch because:
 - the `<Show>`'s `when` doesn't perform a read on the resource so the containing suspense boundary is not triggered.
 
+
+### Suspense Leaks
+
+Care should to be taken not to "read" a resource in a component's setup code (e.g. when setting up a memo) as that would **not** trigger the component's suspense boundary but the next higher containing suspense boundary. This essentially causes a "suspense leak" that will hide/replace a larger portion of the page than necessary.
+
+[Playground link](https://playground.solidjs.com/anonymous/23378dbd-e158-43fe-aee6-24e6cecb5ec2)
+
+```TypeScript
+function Leak() {
+  const [names] = createResource(fetchNames);
+
+  // something expensive
+  const count = createMemo(() => {
+    // Oops
+    const current = names();
+    return current ? current.length : 0;
+  });
+
+  return (
+    <Suspense fallback={<p>Fallback: Nested Suspense Leak</p>}>
+      <Show when={typeof names() !== undefined}>
+        <header>Leak ({count()})</header>
+        <ul>
+          <Index each={names()}>
+            {(name, i) => (
+              <li>
+                {i + 1}: {name()}
+              </li>
+            )}
+          </Index>
+        </ul>
+      </Show>
+    </Suspense>
+  );
+}
+```
+When the `count` memo is created `const current = names[];` attempts to "read" the resource. This execution doesn't happen under the component's ("Nested") suspense boundary so it will trigger the suspense boundary of the container component instead.
+
+```TypeScript
+function LeakFixed() {
+  const [names] = createResource(fetchNames);
+
+  // something expensive
+  const count = createMemo(() =>
+    // better
+    names.state === 'ready' ? names().length : 0
+  );
+
+  return (
+    <Suspense fallback={<p>Fallback: Nested Suspense LeakFixed</p>}>
+      <Show when={typeof names() !== undefined}>
+        <header>LeakFixed ({count()})</header>
+        <ul>
+          <Index each={names()}>
+            {(name, i) => (
+              <li>
+                {i + 1}: {name()}
+              </li>
+            )}
+          </Index>
+        </ul>
+      </Show>
+    </Suspense>
+  );
+}
+```
+In `LeakedFixed` the problem is avoided by using `names.state === 'ready'` instead which delays the "reading" of the resource until a point in time when it is already available.
