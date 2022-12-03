@@ -85,6 +85,56 @@ $ npm run dev -- --open
 - [`<Suspense>`](https://www.solidjs.com/docs/latest/api#suspense) is used to hide its `children` while there are unresolved async events (resources being read) under it. Without a fallback the `children` are simply hidden; if a fallback is specified, the fallback is shown while the suspense boundary is waiting for the async events to settle. Any future async events (like re-fetches) will cause the fallback to be shown again (or the `children` to be hidden again).
 - [`useTransition`](https://www.solidjs.com/docs/latest/api#usetransition) and [`startTransition`](https://www.solidjs.com/docs/latest/api#starttransition) are used to suppress the `<Suspense>` hiding/fallback on **subsequent** async events (re-fetches) and instead keep the previous `children` in place until all the async events settle. For the initial render however the hiding/fallback behaviour remains in place.
 - [`<Show>`](https://www.solidjs.com/docs/latest/api#show) is typically nested inside of `<Suspense>`. While `<Suspense>` will hide its `children` when there are pending async events it doesn't prevent those children from trying to render against the pending values. So `<Show>` is used to prevent `children` from trying to render against values that aren't ready yet.
-- A `fallback` on a nested `<Show>` will override the `fallback` specified on the enclosing `<Suspense>` and any transitioning behaviour applied against it.
+- The `<Suspense />` boundary is triggered by a "read" on a pending resource. Given a resource `name: Resource<string>` using `name()` counts as a resource read while `name.state` does not. So using `typeof name() !== 'undefined'` in the `<Show>`'s `when` will trigger the containing suspense boundary because a resource read is attempted; therefore the `<Suspense>` `fallback` is rendered. If however `name.state === 'ready'` is used in the `<Show>`'s `when`, the `<Show>`'s `fallback` will be shown because the containing suspense boundary **is not** triggered.
 
-When specifying a `fallback` and/or transition against a suspense boundary, **do not specify a `fallback` on the nested `<Show>`.**
+[Playground link](https://playground.solidjs.com/anonymous/599bd23b-3be9-48cb-878f-8d6272247634)
+
+```TypeScript
+function ReadTransition() {
+  const fetchName = makeFetch();
+  const [name, { refetch }] = createResource(fetchName);
+  const [_pending, start] = useTransition();
+  const nextName = () => start(refetch);
+  const cycle = refetchSequencer(nextName);
+  cycle();
+
+  return (
+    <>
+      <header>Read: ✔ Transition: ✔</header>
+      <Suspense fallback={<p>Fallback: Suspense RT</p>}>
+        <Show
+          when={typeof name() !== undefined}
+          fallback={<p>Fallback: Show RT</p>}
+        >
+          <p>{name()}</p>
+        </Show>
+      </Suspense>
+    </>
+  );
+}
+```
+`ReadTransition` will only show the `<Suspense>` `fallback` before the first fetch and will simply hold the old content until the render for subsequent fetches completes because:
+- the action triggering the refetch is wrapped in a transition.
+- the `<Show>`'s `when` performs a read on the resource which triggers the containing suspense boundary.
+
+```TypeScript
+function NoRead() {
+  const fetchName = makeFetch();
+  const [name, { refetch }] = createResource(fetchName);
+  const cycle = refetchSequencer(refetch);
+  cycle();
+  return (
+    <>
+      <header>Read: ✖ Transition: ✖</header>
+      <Suspense fallback={<p>Fallback: Suspense</p>}>
+        <Show when={name.state === 'ready'} fallback={<p>Fallback: Show</p>}>
+          <p>{name()}</p>
+        </Show>
+      </Suspense>
+    </>
+  );
+}
+```
+`NoRead` will show the `<Show>` `fallback` before *every* fetch because:
+- the `<Show>`'s `when` doesn't perform a read on the resource so the containing suspense boundary is not triggered.
+
