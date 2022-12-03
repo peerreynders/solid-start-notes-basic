@@ -2,6 +2,7 @@ import { createEffect, Show, Suspense } from 'solid-js';
 import { createServerData$ } from 'solid-start/server';
 import { useNavigate, useRouteData } from 'solid-start';
 
+import { Note } from '~/types'
 import { homeHref, noteEditHrefMaybe } from '~/route-path';
 import { useNoteList } from '~/components/note-list-context';
 import EditButton from '~/components/edit-button';
@@ -19,37 +20,46 @@ export function routeData({ params }: RouteDataArgs ) {
   );  
 }
 
+function formatUpdatedAt(note: Note | null | undefined) {
+  if (!note) return '';
+
+  const date = new Date(note.updatedAt);
+  return formatDateTime(date);
+}
+
 export default function NoteLayout() {
   const note = useRouteData<typeof routeData>();
 
   // Navigate home if not found
   const navigate = useNavigate();
   createEffect(() => {
+    if (note.state !== 'ready') return;
+
     if (note() === null) navigate(homeHref, { replace: true });
   });
-
-  const updatedAt = () => {
-    const current = note();
-    if (!current) return '';
-
-    const date = new Date(current.updatedAt);
-    return formatDateTime(date);
-  };
 
   const { postRedirect: handle } = useNoteList();
   handle.complete();
 
   return (
     <Suspense>
-      <Show when={ note.state === 'ready' } fallback={ <NoteEditorSkeleton /> }>
+      <Show 
+        when={ note.state === 'ready' }
+        fallback={ <NoteEditorSkeleton /> }
+      >
         <div class="note">
 	  <header class="note__header">
 	    <h1 class="note__title">{ note()!.title }</h1>
 	    <div class="note__menu" role="menubar">
 	      <small class="note__updated-at" role="status">
-	        Last updated on { updatedAt() }
+	        Last updated on { formatUpdatedAt(note()) }
 	      </small>
-	      <EditButton kind="edit" href={ noteEditHrefMaybe(note()!.id) }>Edit</EditButton>
+	      <EditButton 
+	        kind="edit" 
+		href={ noteEditHrefMaybe(note()!.id) }
+	      >
+	        Edit
+	      </EditButton>
 	    </div>
 	  </header>
           <NotePreview body={ note()!.body }/>

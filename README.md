@@ -66,9 +66,9 @@ $ npm run dev -- --open
 - Issue: In [route-path.ts](./src/route-path.ts) the SSR origin in `noteSearchHref` is hardcoded to `http://localhost:3000`.
 - [`note-list-context.tsx`](./src/components/note-list-context.tsx) is used facilitate communication between [`note-list.tsx`](./src/components/note-list.tsx) and its collaborators. The context holds four "handles":
   - `fetch: FetchHandle` is used by `note-list.tsx` itself:
-    - `holder` is a signal used to send an object to `search-field.tsx`. That object "holds" a signal with the `loading` status (The Context is constructed without a reference to `NoteList` so the signal in the context can't be bound directly to the `NoteList`'s `loading` signal. So instead the context constructs a signal whose setter is exposed as `holder` that `NoteList` will eventually use to send an object holding the `loading` signal to `SearchField`).
-    - `searchValue` is a signal accessor to `{ searchText: string, lastEdit: LastEdit }`. `searchText` is the search text provided by `search-field.tsx`. `lastEdit` is ignored but aggregated into `searchValue` by the context to force a refetch in `NoteList` whenever a note is inserted, updated or deleted.
-    - `popLastEdit` allows `NoteList` to consume the [`LastEdit`](./src/types.ts) by `NoteEditor` (which just caused a refetch). In case of an update or insert the note with the matching ID will "flash".
+    - `holder: (loadingHolder: LoadingHolder) => void` is a signal used to send an object to `search-field.tsx`. That object "holds" a signal with the `loading` status (The Context is constructed without a reference to `NoteList` so the signal in the context can't be bound directly to the `NoteList`'s `loading` signal. So instead the context constructs a signal whose setter is exposed as `holder` that `NoteList` will eventually use to send an object holding the `loading` signal to `SearchField`).
+    - `searchValue: () => SearchValue` is a signal accessor to `{ searchText: string, lastEdit: LastEdit }`. `searchText` is the search text provided by `search-field.tsx`. `lastEdit` is ignored but aggregated into `searchValue` by the context to force a refetch in `NoteList` whenever a note is inserted, updated or deleted.
+    - `popLastEdit: () => (LastEdit | undefined)` allows `NoteList` to consume the [`LastEdit`](./src/types.ts) by `NoteEditor` (which just caused a refetch). In case of an update or insert the note with the matching ID will "flash".
   - `search: SearchHandle` is used by [`search-field.tsx`](./src/components/search-field.tsx):
     - `holder: Accessor<LoadingHolder | undefined>` is the accessor that eventually delivers the object holding the `loading` signal from `NoteList`. `SearchField` uses it to activate it's [`spinner.tsx`](./src/components/spinner.tsx);
     - `searchText: (text: string) => void` is the signal setter to send the latest search text to `NoteList`.
@@ -77,3 +77,14 @@ $ npm run dev -- --open
     - `lastEdit: (edit: LastEdit) => void` simply passes the `LastEdit` to be stored within the context. `NoteList` isn't notified until later when the page that the server action redirected to performs a "Post Redirect Complete".
   - `postRedirect: PostRedirectHandle` is used by both [`(note).tsx`](./src/routes/notes/[id]/(note).tsx) and [`(note-empty).tsx`](./src/routes/(note-empty).tsx) (redirected to by note update/insert and delete respectively; see [`note-editor.tsx`](./src/components/note-editor.tsx)):
     - `complete: () => void` will trigger `searchValue` if there is a `LastEdit` present; this will cause `NoteList` to refetch and consume the waiting `LastEdit` value with `popLastEdit`.
+
+## Observations
+
+### Suspense/Show interaction
+
+- [`<Suspense>`](https://www.solidjs.com/docs/latest/api#suspense) is used to hide its `children` while there are unresolved async events (resources being read) under it. Without a fallback the `children` are simply hidden; if a fallback is specified, the fallback is shown while the suspense boundary is waiting for the async events to settle. Any future async events (like re-fetches) will cause the fallback to be shown again (or the `children` to be hidden again).
+- [`useTransition`](https://www.solidjs.com/docs/latest/api#usetransition) and [`startTransition`](https://www.solidjs.com/docs/latest/api#starttransition) are used to suppress the `<Suspense>` hiding/fallback on **subsequent** async events (re-fetches) and instead keep the previous `children` in place until all the async events settle. For the initial render however the hiding/fallback behaviour remains in place.
+- [`<Show>`](https://www.solidjs.com/docs/latest/api#show) is typically nested inside of `<Suspense>`. While `<Suspense>` will hide its `children` when there are pending async events it doesn't prevent those children from trying to render against the pending values. So `<Show>` is used to prevent `children` from trying to render against values that aren't ready yet.
+- A `fallback` on a nested `<Show>` will override the `fallback` specified on the enclosing `<Suspense>` and any transitioning behaviour applied against it.
+
+When specifying a `fallback` and/or transition against a suspense boundary, **do not specify a `fallback` on the nested `<Show>`.**

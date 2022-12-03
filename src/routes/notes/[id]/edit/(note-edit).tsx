@@ -19,7 +19,10 @@ export default function NoteEdit() {
   const note = useRouteData<typeof routeData>();
 
   return (
-    <Show when={ note.state === 'ready' } fallback={ <NoteEditorSkeleton />}>
+    <Show 
+      when={ note.state === 'ready' } 
+      fallback={ <NoteEditorSkeleton />}
+    >
       <NoteEditor 
         id={ note()!.id } 
 	initialTitle={ note()!.title }
