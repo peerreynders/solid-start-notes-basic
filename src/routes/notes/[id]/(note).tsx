@@ -20,7 +20,7 @@ export function routeData({ params }: RouteDataArgs ) {
   );  
 }
 
-function formatUpdatedAt(note: Note | null | undefined) {
+function formatUpdatedAt(note: Note) {
   if (!note) return '';
 
   const date = new Date(note.updatedAt);
@@ -42,28 +42,27 @@ export default function NoteLayout() {
   handle.complete();
 
   return (
-    <Suspense>
-      <Show 
-        when={ note.state === 'ready' }
-        fallback={ <NoteEditorSkeleton /> }
-      >
-        <div class="note">
-	  <header class="note__header">
-	    <h1 class="note__title">{ note()!.title }</h1>
-	    <div class="note__menu" role="menubar">
-	      <small class="note__updated-at" role="status">
-	        Last updated on { formatUpdatedAt(note()) }
-	      </small>
-	      <EditButton 
-	        kind="edit" 
-		href={ noteEditHrefMaybe(note()!.id) }
-	      >
-	        Edit
-	      </EditButton>
-	    </div>
-	  </header>
-          <NotePreview body={ note()!.body }/>
-	</div>
+    <Suspense fallback={ <NoteEditorSkeleton /> } >
+      <Show when={ note() } keyed>
+        {(note) => (
+          <div class="note">
+	    <header class="note__header">
+	      <h1 class="note__title">{ note.title }</h1>
+	      <div class="note__menu" role="menubar">
+	        <small class="note__updated-at" role="status">
+	          Last updated on { formatUpdatedAt(note) }
+	        </small>
+	        <EditButton 
+	          kind="edit" 
+		  href={ noteEditHrefMaybe(note.id) }
+	        >
+	          Edit
+	        </EditButton>
+	      </div>
+	    </header>
+            <NotePreview body={ note.body }/>
+          </div>
+	)}
       </Show>
     </Suspense>
   );

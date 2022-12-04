@@ -1,4 +1,4 @@
-import { Show } from 'solid-js';
+import { Show, Suspense } from 'solid-js';
 import { useRouteData } from 'solid-start';
 import { createServerData$ } from 'solid-start/server';
 
@@ -19,15 +19,16 @@ export default function NoteEdit() {
   const note = useRouteData<typeof routeData>();
 
   return (
-    <Show 
-      when={ note.state === 'ready' } 
-      fallback={ <NoteEditorSkeleton />}
-    >
-      <NoteEditor 
-        id={ note()!.id } 
-	initialTitle={ note()!.title }
-	initialBody={ note()!.body } 
-      />
+    <Suspense fallback={ <NoteEditorSkeleton /> }>
+    <Show when={ note() } keyed>
+      {(note) => (
+        <NoteEditor 
+          id={ note.id } 
+	  initialTitle={ note.title }
+	  initialBody={ note.body } 
+        />
+      )}
     </Show>
+    </Suspense>
   );
 }
