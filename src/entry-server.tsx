@@ -1,15 +1,21 @@
-import {
-  createHandler,
-  renderAsync,
-  StartServer,
-} from "solid-start/entry-server";
+import { createHandler } from "@solidjs/start/entry";
+import { StartServer } from "@solidjs/start/server";
 
-import { start } from './server/notes-db';
-
-export default createHandler(
-  renderAsync(
-    (event) => {
-      start();
-      return (<StartServer event={event} />);
-  })
-);
+export default createHandler(() => (
+  <StartServer
+    document={({ assets, children, scripts }) => (
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+          {assets}
+        </head>
+        <body>
+          <div id="app">{children}</div>
+          {scripts}
+        </body>
+      </html>
+    )}
+  />
+));
