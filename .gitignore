@@ -1,4 +1,5 @@
-
+esb-run.mjs
+/.data
 dist
 .solid
 .output

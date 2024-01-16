@@ -4,11 +4,16 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+		"esb:bundle": "./node_modules/vinxi/node_modules/.bin/esbuild esb-run.ts --bundle --packages=external --platform=node --format=esm --outfile=./esb-run.mjs" ,
+		"esb:run": "pnpm run esb:bundle && node ./esb-run.mjs" 
   },
   "dependencies": {
     "@solidjs/start": "^0.4.9",
+    "nanoid": "^5.0.4",
+    "rxjs": "8.0.0-alpha.14",
     "solid-js": "^1.8.11",
+    "unstorage": "^1.10.1",
     "vinxi": "^0.1.2"
   },
   "engines": {
