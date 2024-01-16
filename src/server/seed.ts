@@ -24,19 +24,21 @@ notes in this app! These notes live on the server in the \`notes-db.json\` file.
 function makeEpochMsBetween(size: number, low: number, high: number) {
 	const [start, end] = low < high ? [low, high] : [high, low];
 	const interval = end - start;
-	const interpolate = (value: number) => start + Math.floor((interval * value) / 0xffff_ffff);
+	const interpolate = (value: number) =>
+		start + Math.floor((interval * value) / 0xffff_ffff);
 	const values = new Uint32Array(size);
 	crypto.getRandomValues(values);
 	values.sort();
-	return Array.prototype.map.call<Uint32Array, [(v: number) => number], number[]>(
-		values,
-		interpolate
-	);
+	return Array.prototype.map.call<
+		Uint32Array,
+		[(v: number) => number],
+		number[]
+	>(values, interpolate);
 }
 
 function startOfYear(timestamp: number) {
 	const date = new Date(timestamp);
-	return (new Date(date.getFullYear(), 0, 1)).getTime();
+	return new Date(date.getFullYear(), 0, 1).getTime();
 }
 
 function makeFromSeed(transform: NoteTransform) {
@@ -88,4 +90,3 @@ function makeFromSeed(transform: NoteTransform) {
 }
 
 export { makeFromSeed };
-

@@ -2,12 +2,12 @@
 import { createStorage } from 'unstorage';
 import fsLiteDriver from 'unstorage/drivers/fs-lite';
 import { Observable, operate, rx } from 'rxjs';
-import { nanoid } from 'nanoid'; 
+import { nanoid } from 'nanoid';
 import { makeFromSeed } from './seed';
 import { makeNoteStore } from './types';
 
 import type { MonoTypeOperatorFunction } from 'rxjs';
-import type { Content, Note, NoteInsert, NoteStore } from './types';
+import type { Content, Note, NoteInsert, NoteStore, NoteUpdate } from './types';
 
 const storage = createStorage({
 	driver: fsLiteDriver({
@@ -22,57 +22,72 @@ function byModifiedDesc(a: Note, b: Note) {
 	return updateDifference !== 0 ? updateDifference : b.createdAt - a.createdAt;
 }
 
-const updateNoteStore = (source: Observable<NoteStore>) => 
+const updateNoteStore = (source: Observable<NoteStore>) =>
 	new Observable<NoteStore>((destination) => {
-		source.subscribe({
-			error: (err) => destination.error(err),
-			next: (store) => {
-				const sortedStore = makeNoteStore(store.notes.toSorted(byModifiedDesc)) ;
+		let storageDone = false;
+		const error = (err: Error) => {
+			if (storageDone) return;
 
-				storage.setItem<Note[]>('notes', sortedStore.notes)
-				.then(() => destination.next(sortedStore))
-				.catch((err) => destination.error(err));
+			storageDone = true;
+			destination.error(err);
+		};
+		let resolved = false;
+		let sourceDone = false;
+		const complete = () => {
+			if (storageDone || !(sourceDone && resolved)) return;
+
+			storageDone = true;
+			destination.complete();
+		};
+
+		source.subscribe({
+			error,
+			next: (store) => {
+				const sortedStore = makeNoteStore(store.notes.toSorted(byModifiedDesc));
+				storage
+					.setItem<Note[]>('notes', sortedStore.notes)
+					.then(() => {
+						destination.next(sortedStore);
+						resolved = true;
+						complete();
+					})
+					.catch(error);
 			},
-			complete: () => destination.complete(),
-		})
+			complete: () => {
+				sourceDone = true;
+				complete();
+			},
+		});
 	});
 
 const makeNote = (
-	title: string, 
-	body: string, 
-	id: string, 
-	createdAt: number, 
+	title: string,
+	body: string,
+	id: string,
+	createdAt: number,
 	updatedAt: number
 ) => ({
 	id,
 	title,
-  body,
-  createdAt,
-  updatedAt,
+	body,
+	createdAt,
+	updatedAt,
 });
 
 function toNoteTransform(
 	[title, body]: Content[number],
-	createdEpochMs: number, 
+	createdEpochMs: number,
 	updatedEpochMs: number,
 	noteCallback: (note: Note) => void,
-	_error: (err: Error) => void 
+	_error: (err: Error) => void
 ) {
-  noteCallback(
-		makeNote(
-			title, 
-			body, 
-			nanoid(), 
-			createdEpochMs, 
-			updatedEpochMs
-		)
-	);
+	noteCallback(makeNote(title, body, nanoid(), createdEpochMs, updatedEpochMs));
 }
 
-const ensureNotes = (source: Observable<Note[] | null>) => 
+const ensureNotes = (source: Observable<Note[] | null>) =>
 	new Observable<NoteStore>((destination) => {
 		let done = false;
-		const error = (err: Error) =>{
+		const error = (err: Error) => {
 			if (done) return;
 
 			done = true;
@@ -81,7 +96,7 @@ const ensureNotes = (source: Observable<Note[] | null>) =>
 
 		let storeComplete = false;
 		let sourceComplete = false;
-		const	complete = () => { 
+		const complete = () => {
 			if (done || !(sourceComplete && storeComplete)) return;
 
 			done = true;
@@ -105,15 +120,12 @@ const ensureNotes = (source: Observable<Note[] | null>) =>
 				}
 
 				// initialize storage
-				rx(
-					makeFromSeed(toNoteTransform),
-					updateNoteStore,
-				).subscribe({
+				rx(makeFromSeed(toNoteTransform), updateNoteStore).subscribe({
 					error,
 					next: (store) => {
 						if (done) return;
 
-						destination.next(store)
+						destination.next(store);
 					},
 					complete: sentStore,
 				});
@@ -140,23 +152,20 @@ type FindNoteTask = {
 };
 
 function runSelectNotes(
-	task: FilterNotesTask | FindNoteTask, 
+	task: FilterNotesTask | FindNoteTask,
 	done: () => void
 ) {
 	let taskDone = false;
 	let sourceComplete = false;
 	let resolved = false;
-	const	complete = () => { 
+	const complete = () => {
 		if (taskDone || !(sourceComplete && resolved)) return;
 
 		taskDone = true;
 		done();
 	};
 
-	rx(
-		maybeNotes(),
-		ensureNotes,
-	).subscribe({
+	rx(maybeNotes(), ensureNotes).subscribe({
 		error: (err: Error) => {
 			if (taskDone) return;
 
@@ -168,7 +177,9 @@ function runSelectNotes(
 			if (taskDone) return;
 
 			if (task.kind === 0) {
-				const result = task.predicate ? store.notes.filter(task.predicate) : store.notes;
+				const result = task.predicate
+					? store.notes.filter(task.predicate)
+					: store.notes;
 				task.resolve(result);
 			} else {
 				task.resolve(store.notes.find(task.predicate));
@@ -187,21 +198,14 @@ function runSelectNotes(
 
 type UpdateNoteTask = {
 	kind: 2;
-	update: (notes: Note[]) => [Note[], Note];
-	resolve: (result: Note) => void;
+	update: (notes: Note[]) => [Note[], Note | undefined];
+	resolve: (result: Note | undefined) => void;
 	reject: (error: Error) => void;
 };
 
-type UpdateAllTask = {
-	kind: 3;
-	update: (notes: Note[]) => Note[];
-	resolve: (result: Note[]) => void;
-	reject: (error: Error) => void;
-};
-
-function runUpdateNotes(task: UpdateNoteTask | UpdateAllTask, done: () => void) {
-	let taskDone = false;	
-	const	error = (err: Error) => {
+function runUpdateNotes(task: UpdateNoteTask, done: () => void) {
+	let taskDone = false;
+	const error = (err: Error) => {
 		if (taskDone) return;
 
 		taskDone = true;
@@ -211,7 +215,7 @@ function runUpdateNotes(task: UpdateNoteTask | UpdateAllTask, done: () => void) 
 
 	let sourceComplete = false;
 	let resolved = false;
-	const	complete = () => { 
+	const complete = () => {
 		if (taskDone || !(sourceComplete && resolved)) return;
 
 		taskDone = true;
@@ -221,85 +225,66 @@ function runUpdateNotes(task: UpdateNoteTask | UpdateAllTask, done: () => void) 
 	let updatedNote: Note | undefined;
 
 	// stage to update the notes content
-	const updateNotes: MonoTypeOperatorFunction<NoteStore> = 
-		(source: Observable<NoteStore>) => new Observable<NoteStore>(
-			(destination) => {
-				let updateDone = false;
-				const error = (err: Error) => {
-					if (updateDone) return;
+	const updateNotes: MonoTypeOperatorFunction<NoteStore> = (
+		source: Observable<NoteStore>
+	) =>
+		new Observable<NoteStore>((destination) => {
+			let updateDone = false;
+			const error = (err: Error) => {
+				if (updateDone) return;
 
-					updateDone = true;
-					destination.error(err);
-				};
+				updateDone = true;
+				destination.error(err);
+			};
 
-				let sourceComplete = false;
-				let storeComplete = false;
-				const complete = () => {
-					if (updateDone || !(sourceComplete && storeComplete)) return;
+			let sourceComplete = false;
+			let storeComplete = false;
+			const complete = () => {
+				if (updateDone || !(sourceComplete && storeComplete)) return;
 
-					updateDone = true;
-					destination.complete();
-				};
+				updateDone = true;
+				destination.complete();
+			};
 
-				source.subscribe(
-					operate({
-						destination,
-						error,
-						next: (store) => {
-							if (updateDone) return;
+			source.subscribe(
+				operate({
+					destination,
+					error,
+					next: (store) => {
+						if (updateDone) return;
 
-							const [notes, updated] = 
-								task.kind === 2 ?
-									task.update(store.notes) :
-									[task.update(store.notes), undefined];
-							updatedNote = updated;
-						
-							storeComplete = true;
-							destination.next(makeNoteStore(notes));
-							complete();
-						},
-						complete: () => {
-							sourceComplete = true;
-							complete();
-						},
-					})
-				);
-			}
-		);
+						const [notes, updated] = task.update(store.notes);
+						updatedNote = updated;
 
-	rx(
-		maybeNotes(),
-		ensureNotes,
-		updateNotes,
-		updateNoteStore
-	).subscribe({
+						storeComplete = true;
+						destination.next(makeNoteStore(notes));
+						complete();
+					},
+					complete: () => {
+						sourceComplete = true;
+						complete();
+					},
+				})
+			);
+		});
+
+	rx(maybeNotes(), ensureNotes, updateNotes, updateNoteStore).subscribe({
 		error,
-		next: (store) => {
-			if (task.kind === 2) {
-				// UpdateNoteTask
-				if (!updatedNote) {
-					error(new Error('updatedNote not set'));
-					return;
-				}
+		next: (_store) => {
+			if (taskDone) return;
 
-				resolved = true;
-				task.resolve(updatedNote);
-
-			} else {
-				// UpdateAllTask
-				resolved = true;
-				task.resolve(store.notes);
-			}
+			resolved = true;
+			task.resolve(updatedNote);
 			complete();
 		},
 		complete: () => {
 			sourceComplete = true;
 			complete();
-		}
+		},
 	});
 }
 
-type Task = FilterNotesTask | FindNoteTask | UpdateAllTask | UpdateNoteTask;
+type Task = FilterNotesTask | FindNoteTask | UpdateNoteTask;
 
 let scheduled = false;
 let currentIndex = -1;
@@ -319,13 +304,12 @@ function runTasks() {
 	const task = tasks[currentIndex];
 	switch (task.kind) {
 		case 0:
-		case 1:
-			{
+		case 1: {
 			runSelectNotes(task, runTasks);
 			return;
 		}
-		case 2:
-		case 3: {
+
+		case 2: {
 			runUpdateNotes(task, runTasks);
 			return;
 		}
@@ -354,30 +338,69 @@ function selectNotesInTitle(withText?: string) {
 	});
 }
 
-function selectNoteWithId(id: string) {
+function selectNote(id: Note['id']) {
 	const predicate = (note: Note) => note.id === id;
 	return new Promise<Note | undefined>((resolve, reject) => {
 		queueTask({ kind: 1, predicate, resolve, reject });
 	});
 }
 
-function insertNote(note: NoteInsert) {
-	const update = (current: Note[]): [Note[], Note] => {
+const makeInsertNote =
+	(note: NoteInsert) =>
+	(current: Note[]): [Note[], Note] => {
 		const createdAt = Date.now();
 		const newNote = makeNote(
 			note.title,
 			note.body,
 			nanoid(),
 			createdAt,
-			createdAt,
+			createdAt
 		);
-
 		return [current.toSpliced(current.length, 0, newNote), newNote];
 	};
 
+function insertNote(note: NoteInsert) {
 	return new Promise<Note | undefined>((resolve, reject) => {
-		queueTask({ kind: 2, update, resolve, reject });
+		queueTask({ kind: 2, update: makeInsertNote(note), resolve, reject });
 	});
 }
 
-export { insertNote, selectNotesInTitle, selectNoteWithId };
+const makeUpdateNote =
+	(update: NoteUpdate) =>
+	(current: Note[]): [Note[], Note | undefined] => {
+		const index = current.findIndex((note) => note.id === update.id);
+		if (index < 0) return [current, undefined];
+
+		const note = current[index];
+		const updated = makeNote(
+			update.title,
+			update.body,
+			note.id,
+			note.createdAt,
+			Date.now()
+		);
+		return [current.toSpliced(index, 1, updated), updated];
+	};
+
+function updateNote(note: NoteUpdate) {
+	return new Promise<Note | undefined>((resolve, reject) => {
+		queueTask({ kind: 2, update: makeUpdateNote(note), resolve, reject });
+	});
+}
+
+const makeDeleteNote =
+	(id: Note['id']) =>
+	(current: Note[]): [Note[], Note | undefined] => {
+		const index = current.findIndex((note) => note.id === id);
+		return index > -1
+			? [current.toSpliced(index, 1), current[index]]
+			: [current, undefined];
+	};
+
+function deleteNote(id: Note['id']) {
+	return new Promise<Note | undefined>((resolve, reject) => {
+		queueTask({ kind: 2, update: makeDeleteNote(id), resolve, reject });
+	});
+}
+
+export { deleteNote, insertNote, selectNotesInTitle, selectNote, updateNote };
