@@ -1,0 +1,293 @@
+// settings
+// tools
+// generic (e.g. reset)
+
+// TODO: https://piccalil.li/blog/a-more-modern-css-reset/
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Remove default padding */
+ul[class],
+ol[class] {
+	padding: 0;
+}
+
+/* Remove default margin */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+ul[class],
+ol[class],
+li,
+figure,
+figcaption,
+blockquote,
+dl,
+dd {
+	margin: 0;
+}
+
+/* Set core body defaults */
+body {
+	min-height: 100vh;
+	scroll-behavior: smooth;
+	text-rendering: optimizeSpeed;
+	line-height: 1.5;
+}
+
+/* Remove list styles on ul, ol elements with a class attribute */
+ul[class],
+ol[class] {
+	list-style: none;
+}
+
+/* A elements that don't have a class get default styles */
+a:not([class]) {
+	text-decoration-skip-ink: auto;
+}
+
+/* Make images easier to work with */
+img {
+	max-width: 100%;
+	display: block;
+}
+
+/* Natural flow and rhythm in articles by default */
+article > * + * {
+	margin-block-start: 1em;
+}
+
+/* Inherit fonts for inputs and buttons */
+input,
+button,
+textarea,
+select {
+	font: inherit;
+}
+
+/* Remove all animations and transitions for people that prefer not to see them */
+@media (prefers-reduced-motion: reduce) {
+	* {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+:root {
+	/* Colors */
+	--main-border-color: #ddd;
+	--primary-border: #037dba;
+	--gray-20: #404346;
+	--gray-60: #8a8d91;
+	--gray-70: #bcc0c4;
+	--gray-80: #c9ccd1;
+	--gray-90: #e4e6eb;
+	--gray-95: #f0f2f5;
+	--gray-100: #f5f7fa;
+	--primary-blue: #037dba;
+	--secondary-blue: #0396df;
+	--tertiary-blue: #c6efff;
+	--flash-blue: #4cf7ff;
+	--outline-blue: rgba(4, 164, 244, 0.6);
+	--navy-blue: #035e8c;
+	--red-25: #bd0d2a;
+	--secondary-text: #65676b;
+	--white: #fff;
+	--yellow: #fffae1;
+
+	--outline-box-shadow: 0 0 0 2px var(--outline-blue);
+	--outline-box-shadow-contrast: 0 0 0 2px var(--navy-blue);
+
+	/* Fonts */
+	--sans-serif: -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		Ubuntu, Helvetica, sans-serif;
+	--monospace: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console,
+		monospace;
+}
+
+// elements
+html {
+	font-size: 100%;
+}
+
+body {
+	font-family: var(--sans-serif);
+	background: var(--gray-100);
+	font-weight: 400;
+	line-height: 1.75;
+}
+
+// objects
+// components
+.c-main {
+	display: flex;
+	height: 100vh;
+	width: 100%;
+	overflow: hidden;
+
+	&__column {
+		height: 100%;
+
+		&:last-chlid {
+			flex-grow: 1;
+		}
+	}
+}
+
+.c-logo {
+	height: 20px;
+	width: 22px;
+	margin-inline-end: 10px;
+}
+
+.c-sidebar {
+	background: var(--white);
+	box-shadow:
+		0px 8px 24px rgba(0, 0, 0, 0.1),
+		0px 2px 2px rgba(0, 0, 0, 0.1);
+	overflow-y: scroll;
+	z-index: 1000;
+	flex-shrink: 0;
+	max-width: 350px;
+	min-width: 250px;
+	width: 30%;
+
+	&__header {
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		padding: 36px 16px 16px;
+		display: flex;
+		align-items: center;
+	}
+
+	&__menu {
+		padding: 0 16px 16px;
+		display: flex;
+		justify-content: space-between;
+
+		& > %sidebar__menu__nested {
+			position: relative;
+			flex-grow: 1;
+		}
+	}
+}
+
+// https://codepen.io/mandelid/pen/vwKoe
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.c-spinner {
+	display: inline-block;
+	transition: opacity linear 0.1s 0.2s;
+	width: 20px;
+	height: 20px;
+	border: 3px solid rgba(80, 80, 80, 0.5);
+	border-radius: 50%;
+	border-top-color: #fff;
+	animation: spin 1s ease-in-out infinite;
+	opacity: 0;
+
+	&--active {
+		opacity: 1;
+	}
+
+	%spinner__wrapper & {
+		position: absolute;
+		right: 10px;
+		top: 10px;
+	}
+}
+
+.c-search-field {
+	@extend %sidebar__menu__nested;
+
+	& input {
+		padding: 0 16px;
+		border-radius: 100px;
+		border: 1px solid var(--gray-90);
+		width: 100%;
+		height: 100%;
+		outline-style: none;
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow);
+		}
+	}
+
+	@extend %spinner__wrapper;
+}
+
+.c-edit-button {
+	border-radius: 100px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	padding: 6px 20px 8px;
+	cursor: pointer;
+	font-weight: 700;
+	outline-style: none;
+
+	&--new {
+		background: var(--primary-blue);
+		color: var(--white);
+		border: none;
+		margin-inline-start: 6px;
+		transition: all 0.2s ease-in-out;
+
+		&:hover {
+			background: var(--secondary-blue);
+		}
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow-contrast);
+		}
+	}
+
+	&--outline {
+		background: var(--white);
+		color: var(--primary-blue);
+		border: 1px solid var(--primary-blue);
+		margin-inline-start: 12px;
+		transition: all 0.1s ease-in-out;
+
+		&:disabled {
+			opacity: 0.5;
+		}
+
+		&:hover:not([disabled]) {
+			background: var(--primary-blue);
+			color: var(--white);
+		}
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow);
+		}
+	}
+}
+
+// utilities (overrides)
+.u-offscreen {
+	border: 0;
+	clip: rect(0, 0, 0, 0);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	width: 1px;
+	position: absolute;
+}
