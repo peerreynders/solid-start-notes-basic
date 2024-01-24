@@ -1,9 +1,11 @@
 // @refresh reload
+import { Router } from '@solidjs/router';
 import EditButton from './components/edit-button';
 import SearchField from './components/search-field';
+import BriefList from './components/brief-list';
 import './styles/critical.scss';
 
-export default function App() {
+function Layout() {
 	return (
 		<main class="c-main">
 			<section class="c-sidebar c-main__column">
@@ -24,7 +26,7 @@ export default function App() {
 						New
 					</EditButton>
 				</section>
-				<nav>NoteList</nav>
+				<BriefList />
 			</section>
 			<section class="c-note-view c-main__column">
 				<span class="note-text--empty-state">
@@ -33,4 +35,8 @@ export default function App() {
 			</section>
 		</main>
 	);
+}
+
+export default function App() {
+	return <Router root={Layout} />;
 }

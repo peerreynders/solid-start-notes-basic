@@ -280,6 +280,282 @@ body {
 	}
 }
 
+//https://youtu.be/ot-LoU0MGb0?t=1575
+
+@mixin o-skeleton {
+	height: 100%;
+	background-color: #eee;
+	background-image: linear-gradient(90deg, #eee, #f5f5f5, #eee);
+	background-size: 200px 100%;
+	background-repeat: no-repeat;
+	border-radius: 4px;
+	display: block;
+	line-height: 1;
+	width: 100%;
+	animation: shimmer 1.2s ease-in-out infinite;
+	color: transparent;
+
+	&::after {
+		content: 'Loading...';
+	}
+
+	&:first-of-type {
+		margin: 0;
+	}
+
+	&--button {
+		border-radius: 100px;
+		padding: 6px 20px 8px;
+		width: auto;
+	}
+}
+
+%o-skeleton {
+	@include o-skeleton;
+}
+
+@mixin o-stack {
+	& > * + * {
+		margin-block-start: 0.8em;
+	}
+}
+
+%o-brief-list-wrapper {
+	padding: 16px 0;
+}
+
+%o-brief-list-nested {
+	padding: 0 16px;
+}
+
+@mixin o-note-list-note {
+	position: relative;
+	margin-bottom: 12px;
+	padding: 16px;
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	max-height: 100px;
+	transition: max-height 250ms ease-out;
+	transform: scale(1);
+
+	&--expanded {
+		max-height: 300px;
+		transition: max-height 0.5s ease;
+	}
+
+	&--flash {
+		animation-name: flash;
+		animation-duration: 0.6s;
+	}
+}
+
+ul.c-note-list-skeleton {
+	@extend %o-brief-list-wrapper;
+}
+
+.c-note-list-skeleton {
+	@include o-stack;
+
+	& > li {
+		@extend %o-brief-list-nested;
+	}
+
+	&__note {
+		@include o-note-list-note;
+		@include o-skeleton;
+		height: 5em;
+	}
+}
+
+.c-brief-empty {
+	padding: 16px;
+}
+
+ul.c-brief-list {
+	@extend %o-brief-list-wrapper;
+}
+
+.c-brief-list {
+	@include o-stack;
+
+	& > li {
+		@extend %o-brief-list-nested;
+	}
+}
+
+.c-brief {
+	position: relative;
+	margin-bottom: 12px;
+	padding: 16px;
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	max-height: 100px;
+	transition: max-height 250ms ease-out;
+	transform: scale(1);
+
+	&:has(.c-brief__details-state:checked) {
+		max-height: 300px;
+		transition: max-height 500ms ease;
+	}
+
+	&.js\:c-brief--flash {
+		animation-name: flash;
+		animation-duration: 0.6s;
+	}
+
+	& header {
+		z-index: 1;
+		width: 85%;
+		pointer-events: none;
+	}
+
+	& strong {
+		display: block;
+		font-size: 1.25rem;
+		line-height: 1.2;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	& time {
+		font-size: 0.8rem;
+	}
+
+	&__open {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		z-index: 0;
+		border: 1px solid transparent;
+		border-radius: 6px;
+		text-align: start;
+		background-color: var(--gray-95);
+		cursor: pointer;
+		outline-style: none;
+		color: transparent;
+		font-size: 0;
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow);
+		}
+
+		&:hover {
+			background-color: var(--gray-90);
+		}
+
+		&.c-brief--active {
+			background-color: var(--tertiary-blue);
+			border: 1px solid var(--primary-border);
+		}
+
+		&.c-brief--pending {
+			background-color: var(--gray-80);
+		}
+	}
+
+	&__no-content {
+		font-style: italic;
+	}
+
+	&__details-state {
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		appearance: none;
+
+		&:checked {
+			& ~ .c-brief__details-toggle svg {
+				transform: rotate(-180deg);
+			}
+
+			& ~ .c-brief__details {
+				transform: translateY(5px);
+				opacity: 1;
+			}
+		}
+	}
+
+	&__details-toggle {
+		z-index: 2;
+		border-radius: 50%;
+		height: 24px;
+		border: 1px solid var(--gray-60);
+		flex-shrink: 0;
+		visibility: hidden;
+		opacity: 0;
+		cursor: pointer;
+		transition:
+			visibility 0s linear 20ms,
+			opacity 300ms;
+		outline-style: none;
+
+		.c-brief__details-state:focus ~ & {
+			box-shadow: var(--outline-box-shadow);
+		}
+
+		.c-brief__open:hover + &,
+		.c-brief__open:focus + &,
+		&:hover,
+		&:focus {
+			visibility: visible;
+			opacity: 1;
+			transition:
+				visibility 0s linear 0s,
+				opacity 300ms;
+		}
+
+		& svg {
+			opacity: 0.8;
+			margin: 0.15rem 0.3rem;
+			transition: all 250ms ease-in-out;
+			font-size: 0.8rem;
+		}
+	}
+
+	&__details {
+		pointer-events: none;
+		z-index: 2;
+		flex: 1 1 250px;
+		position: relative;
+		overflow: hidden;
+		opacity: 0;
+		top: -5px;
+		transition:
+			transform 250ms ease-out,
+			opacity 250ms ease-in;
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200px 0;
+	}
+	100% {
+		background-position: calc(200px + 100%) 0;
+	}
+}
+
+@keyframes flash {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.05);
+		opacity: 0.9;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
 // utilities (overrides)
 .u-offscreen {
 	border: 0;

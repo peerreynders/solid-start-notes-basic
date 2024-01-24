@@ -1,0 +1,78 @@
+// file: src/components/note-list.tsx
+import {
+	createEffect,
+	onMount,
+	untrack,
+	Suspense,
+	type Accessor,
+} from 'solid-js';
+import { isServer, NoHydration } from 'solid-js/web';
+import { createAsync, useSearchParams } from '@solidjs/router';
+import diff from '../lib/morph';
+
+import { getNoteListContent } from '../api';
+import { getServerBriefs } from '../server/api';
+import { TARGET_CLASS, NoteListContent } from './note-list-content';
+
+import type { SearchParams } from '../route-path';
+import type { NoteBrief } from '../server/types';
+
+function toClassSelector(name: string) {
+	const index = name.indexOf(':');
+	return index > 1 ? '.js\\' + name.slice(index) : name;
+}
+
+const rootSelector = 'nav';
+const contentSelector = toClassSelector(TARGET_CLASS);
+const childContentSelector = `:scope > ${contentSelector}`;
+
+export default function NoteList() {
+	let root: HTMLElement | undefined;
+	let briefs: Accessor<NoteBrief[] | undefined> = () => [];
+	const [searchParams] = useSearchParams<SearchParams>();
+	const initialSearch = untrack<string | undefined>(() => searchParams.search);
+
+	if (isServer) {
+		briefs = createAsync(() => getServerBriefs(searchParams.search));
+	} else {
+		onMount(() => {
+			// CLIENT ONLY
+			// Without hydration, no refs
+			root = document.querySelector(rootSelector) ?? undefined;
+			const contentToNode = (innerHTML: string) => {
+				const template = document.createElement('template');
+				template.innerHTML = innerHTML;
+				return template.content.firstElementChild;
+			};
+			const content = createAsync(() =>
+				getNoteListContent(searchParams.search)
+			);
+
+			createEffect(() => {
+				const noteListContent = content();
+				const source = noteListContent
+					? contentToNode(noteListContent)
+					: undefined;
+				const target = root?.querySelector(childContentSelector) ?? undefined;
+				if (source && target) {
+					diff(target, source);
+				} else if (source && root) {
+					root.appendChild(source.cloneNode(true));
+				} else if (target && root) {
+					root.removeChild(target);
+				}
+			});
+		});
+	}
+
+	// Note: we want SERVER ONLY render
+	return (
+		<Suspense>
+			<NoHydration>
+				<nav>
+					<NoteListContent search={initialSearch} briefs={briefs() ?? []} />
+				</nav>
+			</NoHydration>
+		</Suspense>
+	);
+}

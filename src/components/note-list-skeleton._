@@ -1,0 +1,15 @@
+export default function NoteListSkeleton() {
+	return (
+		<ul class="c-note-list-skeleton">
+			<li>
+				<div class="c-note-list-skeleton__note"></div>
+			</li>
+			<li>
+				<div class="c-note-list-skeleton__note"></div>
+			</li>
+			<li>
+				<div class="c-note-list-skeleton__note"></div>
+			</li>
+		</ul>
+	);
+}

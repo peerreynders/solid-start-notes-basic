@@ -28,4 +28,13 @@ const makeNoteStore = (notes: Note[]) =>
 
 export type NoteStore = ReturnType<typeof makeNoteStore>;
 
-export { makeNoteStore };
+const makeNoteBrief = (
+	id: Note['id'],
+	title: Note['title'],
+	updatedAt: number,
+	summary = ''
+) => ({ id, title, updatedAt, summary });
+
+export type NoteBrief = ReturnType<typeof makeNoteBrief>;
+
+export { makeNoteBrief, makeNoteStore };

@@ -15,7 +15,7 @@ Markdown. You can even [link to SolidStart's website!](https://start.solidjs.com
 	[
 		'A note with a very long title because sometimes you need more words',
 		`You can write all kinds of [amazing](https://en.wikipedia.org/wiki/The_Amazing)
-notes in this app! These notes live on the server in the \`notes-db.json\` file.
+notes in this app! These notes live on the server in the \`.data/notes\` file.
 ![This app is powered by SolidStart](https://assets.solidjs.com/banner?project=Start&amp;type=core)`,
 	],
 	['I wrote this note today', 'It was an excellent note.'],
