@@ -4,6 +4,7 @@ export type Content = [title: string, body: string][];
 export type NoteInsert = {
 	title: string;
 	body: string;
+	excerpt: string;
 };
 
 export type NoteUpdate = {
@@ -17,6 +18,7 @@ export type Note = NoteUpdate & {
 
 export type NoteTransform = (
 	content: Content[number],
+	excerpt: string,
 	createdAt: number, // milliseconds since ECMAScript epoch
 	updatedAt: number,
 	noteCallback: (note: Note) => void,

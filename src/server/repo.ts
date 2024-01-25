@@ -63,6 +63,7 @@ const updateNoteStore = (source: Observable<NoteStore>) =>
 const makeNote = (
 	title: string,
 	body: string,
+	excerpt: string,
 	id: string,
 	createdAt: number,
 	updatedAt: number
@@ -70,18 +71,22 @@ const makeNote = (
 	id,
 	title,
 	body,
+	excerpt,
 	createdAt,
 	updatedAt,
 });
 
 function toNoteTransform(
 	[title, body]: Content[number],
+	excerpt: string,
 	createdEpochMs: number,
 	updatedEpochMs: number,
 	noteCallback: (note: Note) => void,
 	_error: (err: Error) => void
 ) {
-	noteCallback(makeNote(title, body, nanoid(), createdEpochMs, updatedEpochMs));
+	noteCallback(
+		makeNote(title, body, excerpt, nanoid(), createdEpochMs, updatedEpochMs)
+	);
 }
 
 const ensureNotes = (source: Observable<Note[] | null>) =>
@@ -352,6 +357,7 @@ const makeInsertNote =
 		const newNote = makeNote(
 			note.title,
 			note.body,
+			note.excerpt,
 			nanoid(),
 			createdAt,
 			createdAt
@@ -375,6 +381,7 @@ const makeUpdateNote =
 		const updated = makeNote(
 			update.title,
 			update.body,
+			update.excerpt,
 			note.id,
 			note.createdAt,
 			Date.now()

@@ -18,13 +18,13 @@ type Props = {
 const CLASSNAME_FLASH = 'js:c-brief--flash';
 
 const classListBrief = (flushed: boolean) =>
-	'c-brief' + (flushed ? ' ' + CLASSNAME_FLASH : '');
+	'js:c-brief c-brief' + (flushed ? ' ' + CLASSNAME_FLASH : '');
 
 const classListOpen = (
 	active: boolean | undefined,
 	pending: boolean | undefined
 ) =>
-	'c-brief__open' +
+	'js:c-brief__open c-brief__open' +
 	(active ? ' c-brief--active' : '') +
 	(pending ? ' c-brief--pending' : '');
 
@@ -35,7 +35,7 @@ function Brief(props: Props) {
 			brief?.classList.remove(CLASSNAME_FLASH);
 	}
 
-	let updated: HTMLTimeElement | undefined;
+	let header: HTMLElement | undefined;
 	const toggleId = createUniqueId();
 	// non-reactive
 	const [updatedAt, updatedISO] = props.format(props.updatedAt);
@@ -44,11 +44,15 @@ function Brief(props: Props) {
 		// After hydration correct the display date/time
 		// if it deviates from the server generated one
 		// (a request may carry the locale but not the timezone)
-		if (updated instanceof HTMLTimeElement) {
-			const epochTimestamp = Date.parse(updated.dateTime);
-			const current = updated.textContent;
-			const [local] = props.format(epochTimestamp);
-			if (current !== local) updated.textContent = local;
+		// Also `ref` doesn't work on elements inside `NoHydration`
+		if (header instanceof HTMLElement) {
+			const time = header.querySelector('time');
+			if (time instanceof HTMLTimeElement) {
+				const epochTimestamp = Date.parse(time.dateTime);
+				const current = time.textContent;
+				const [local] = props.format(epochTimestamp);
+				if (current !== local) time.textContent = local;
+			}
 		}
 	});
 
@@ -59,12 +63,10 @@ function Brief(props: Props) {
 			onAnimationEnd={removeFlash}
 			data-note-id={props.noteId}
 		>
-			<header>
+			<header ref={header}>
 				<strong>{props.title}</strong>
 				<NoHydration>
-					<time ref={updated} datetime={updatedISO}>
-						{updatedAt}
-					</time>
+					<time datetime={updatedISO}>{updatedAt}</time>
 				</NoHydration>
 			</header>
 			<input id={toggleId} type="checkbox" class="c-brief__details-state" />

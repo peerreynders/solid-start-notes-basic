@@ -1,13 +1,13 @@
 // file: src/components/brief-list.tsx
-import { For, Show, Suspense } from 'solid-js';
+import { createSignal, createMemo, For, onMount, Show } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
-import { createAsync, useSearchParams } from '@solidjs/router';
+import { createAsync, useLocation, useNavigate } from '@solidjs/router';
 import { getBriefs } from '../api';
+import { extractNoteId, hrefWithNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
 import { Brief } from './brief';
 
-import type { SearchParams } from '../route-path';
 import type { NoteBrief } from '../types';
 
 const EmptyContent = (props: { search: string | undefined }) => (
@@ -18,6 +18,22 @@ const EmptyContent = (props: { search: string | undefined }) => (
 	</div>
 );
 
+function findNoteId(target: unknown) {
+	if (
+		!(
+			target instanceof HTMLButtonElement &&
+			target.classList.contains('js:c-brief__open')
+		)
+	)
+		return undefined;
+
+	const container = target.closest('div.js\\:c-brief');
+
+	return container instanceof HTMLDivElement
+		? container.dataset.noteId
+		: undefined;
+}
+
 function briefDateFormat() {
 	if (isServer) {
 		return makeBriefDateFormat();
@@ -26,8 +42,34 @@ function briefDateFormat() {
 	}
 }
 
-export default function BriefList() {
-	const [searchParams] = useSearchParams<SearchParams>();
+type Props = {
+	searchText: string | undefined;
+};
+
+export default function BriefList(props: Props) {
+	// Active Note is the one navigated to
+	// until another one is clicked
+	const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
+	const location = useLocation();
+	const active = createMemo<[string, number]>(
+		(last) => {
+			const navId = extractNoteId(location.pathname);
+			const [_id, lastTime] = last;
+			const clicked = clickedId();
+			return clicked[1] > lastTime ? clicked : [navId, performance.now()];
+		},
+		[extractNoteId(location.pathname), performance.now()]
+	);
+	const activeId = () => active()[0];
+
+	const navigate = useNavigate();
+	const navigateToClicked = (event: MouseEvent) => {
+		const noteId = findNoteId(event.target);
+		if (!noteId) return;
+
+		setClickedId([noteId, performance.now()]);
+		navigate(hrefWithNote(location, noteId));
+	};
 
 	// Combining async with Store. See:
 	// https://github.com/solidjs/solid-realworld/blob/f6e77ecd652bf32f0dc9238f291313fd1af7e98b/src/store/createComments.js#L4-L8
@@ -36,7 +78,7 @@ export default function BriefList() {
 	const [briefsStore, setBriefs] = createStore(initialValue);
 	const briefs = createAsync(
 		async () => {
-			const next = await getBriefs(searchParams.search);
+			const next = await getBriefs(props.searchText);
 			setBriefs(reconcile(next));
 			return briefsStore;
 		},
@@ -44,34 +86,37 @@ export default function BriefList() {
 	);
 
 	const format = briefDateFormat();
+	let root: HTMLElement | undefined;
+	onMount(() => {
+		if (root instanceof HTMLElement)
+			root.addEventListener('click', navigateToClicked);
+	});
 
 	return (
-		<Suspense>
-			<nav>
-				<Show
-					when={briefs().length}
-					fallback={EmptyContent({ search: searchParams.search })}
-				>
-					<ul class="c-brief-list">
-						<For each={briefs()}>
-							{(brief: NoteBrief) => (
-								<li>
-									<Brief
-										noteId={brief.id}
-										title={brief.title}
-										summary={brief.summary}
-										updatedAt={brief.updatedAt}
-										active={false}
-										pending={false}
-										flushed={false}
-										format={format}
-									/>
-								</li>
-							)}
-						</For>
-					</ul>
-				</Show>
-			</nav>
-		</Suspense>
+		<nav ref={root}>
+			<Show
+				when={briefs().length}
+				fallback={<EmptyContent search={props.searchText} />}
+			>
+				<ul class="c-brief-list">
+					<For each={briefs()}>
+						{(brief: NoteBrief) => (
+							<li>
+								<Brief
+									noteId={brief.id}
+									title={brief.title}
+									summary={brief.summary}
+									updatedAt={brief.updatedAt}
+									active={activeId() === brief.id}
+									pending={false}
+									flushed={false}
+									format={format}
+								/>
+							</li>
+						)}
+					</For>
+				</ul>
+			</Show>
+		</nav>
 	);
 }

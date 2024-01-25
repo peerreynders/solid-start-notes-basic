@@ -1,6 +1,7 @@
 // file: src/server/seed.ts
 import { Observable, operate } from 'rxjs';
 import { makeNoteStore } from './types';
+import { excerpt } from './excerpt';
 
 import type { Observer, Subscriber } from 'rxjs';
 import type { Content, NoteStore, Note, NoteTransform } from './types';
@@ -69,7 +70,14 @@ function makeFromSeed(transform: NoteTransform) {
 
 		// Note: synchronous firehose
 		for (let i = 0; i < content.length; i += 1)
-			transform(content[i], created[i], now, next, error);
+			transform(
+				content[i],
+				excerpt(content[i][1]),
+				created[i],
+				now,
+				next,
+				error
+			);
 
 		observer.next(notes);
 		observer?.complete();

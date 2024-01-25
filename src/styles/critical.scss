@@ -136,10 +136,21 @@ body {
 	&__column {
 		height: 100%;
 
-		&:last-chlid {
+		&:last-child {
 			flex-grow: 1;
 		}
 	}
+}
+
+.c-note-view {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.c-note-none {
+	font-size: 1.5rem;
+	margin-inline: 20px 20px;
 }
 
 .c-logo {
@@ -258,7 +269,7 @@ body {
 		}
 	}
 
-	&--outline {
+	&--modify {
 		background: var(--white);
 		color: var(--primary-blue);
 		border: 1px solid var(--primary-blue);
@@ -328,7 +339,7 @@ body {
 	padding: 0 16px;
 }
 
-@mixin o-note-list-note {
+@mixin o-brief {
 	position: relative;
 	margin-bottom: 12px;
 	padding: 16px;
@@ -338,33 +349,21 @@ body {
 	align-items: flex-start;
 	flex-wrap: wrap;
 	max-height: 100px;
-	transition: max-height 250ms ease-out;
-	transform: scale(1);
-
-	&--expanded {
-		max-height: 300px;
-		transition: max-height 0.5s ease;
-	}
-
-	&--flash {
-		animation-name: flash;
-		animation-duration: 0.6s;
-	}
 }
 
-ul.c-note-list-skeleton {
+ul.c-brief-list-skeleton {
 	@extend %o-brief-list-wrapper;
 }
 
-.c-note-list-skeleton {
+.c-brief-list-skeleton {
 	@include o-stack;
 
 	& > li {
 		@extend %o-brief-list-nested;
 	}
 
-	&__note {
-		@include o-note-list-note;
+	&__brief {
+		@include o-brief;
 		@include o-skeleton;
 		height: 5em;
 	}
@@ -387,15 +386,7 @@ ul.c-brief-list {
 }
 
 .c-brief {
-	position: relative;
-	margin-bottom: 12px;
-	padding: 16px;
-	width: 100%;
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	flex-wrap: wrap;
-	max-height: 100px;
+	@include o-brief;
 	transition: max-height 250ms ease-out;
 	transform: scale(1);
 

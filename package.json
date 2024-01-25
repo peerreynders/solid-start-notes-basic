@@ -12,6 +12,7 @@
     "esb:run": "pnpm run esb:bundle && node ./esb-run.mjs"
   },
   "dependencies": {
+    "@solidjs/meta": "^0.29.3",
     "@solidjs/router": "^0.10.9",
     "@solidjs/start": "^0.4.10",
     "marked": "^11.1.1",
