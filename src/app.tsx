@@ -42,7 +42,9 @@ function Layout(props: ParentProps) {
 						<BriefList searchText={searchParams.search} />
 					</Suspense>
 				</section>
-				<section class="c-note-view c-main__column">{props.children}</section>
+				<section class="c-note-view c-main__column">
+					<Suspense>{props.children}</Suspense>
+				</section>
 			</main>
 		</MetaProvider>
 	);
@@ -52,8 +54,8 @@ export default function App() {
 	return (
 		<Router root={Layout}>
 			<Route path="/new" component={NoteNew} />
-			<Route path="/notes/:id/edit" component={NoteEdit} />
-			<Route path="/notes/:id" component={Note} />
+			<Route path="/notes/:noteId/edit" component={NoteEdit} />
+			<Route path="/notes/:noteId" component={Note} />
 			<Route path="/" component={NoteNone} />
 			<Route path="*404" component={NotFound} />
 		</Router>

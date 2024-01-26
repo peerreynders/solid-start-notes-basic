@@ -10,7 +10,7 @@ export default function Note() {
 		<>
 			<Title>{makeTitle()}</Title>
 			<div class="c-note-none">
-				<span>{`Note Edit (id: ${params.id})`}</span>
+				<span>{`Note Edit (id: ${params.noteId})`}</span>
 			</div>
 		</>
 	);

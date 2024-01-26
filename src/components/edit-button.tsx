@@ -10,7 +10,7 @@ type Props = ParentProps & {
 
 const classList = (kind: Props['kind']) =>
 	'c-edit-button' +
-	(kind === 'new' ? ' c-edit-button--new' : 'c-edit-button--modify');
+	(kind === 'new' ? ' c-edit-button--new' : ' c-edit-button--modify');
 
 export default function EditButton(props: Props) {
 	const location = useLocation();

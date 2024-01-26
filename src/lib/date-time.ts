@@ -8,6 +8,29 @@ const defaultOptionsBriefDateFormat: Intl.ResolvedDateTimeFormatOptions = {
 	hour12: false,
 };
 
+function makeNoteDateFormat({
+	locale,
+	timeZone,
+	hour12,
+} = defaultOptionsBriefDateFormat) {
+	const display = Intl.DateTimeFormat(locale, {
+		timeZone,
+		hour12,
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	});
+
+	return function format(epochTimestamp: number) {
+		const dateTime = new Date(epochTimestamp);
+		// TS always infers arrays, not tuples
+		const result: [string, string] = [
+			display.format(dateTime),
+			dateTime.toISOString(),
+		];
+		return result;
+	};
+}
+
 function makeBriefDateFormat({
 	locale,
 	timeZone,
@@ -41,4 +64,4 @@ function makeBriefDateFormat({
 	};
 }
 
-export { makeBriefDateFormat };
+export { makeBriefDateFormat, makeNoteDateFormat };

@@ -5,7 +5,8 @@ export type SearchParams = {
 	search: string;
 };
 
-const noteNewHref = '/new';
+const homePathname = '/';
+const noteNewPathname = '/new';
 const notePathname = (noteId: string) => `/notes/${noteId}`;
 const noteEditPathname = (noteId: string) => `/notes/${noteId}/edit`;
 
@@ -26,8 +27,11 @@ function hrefToNoteEdit(current: Location<unknown>) {
 	return current.search ? href + current.search : href;
 }
 
+const hrefToHome = (current: Location<unknown>) =>
+	current.search ? homePathname + current.search : homePathname;
+
 const hrefToNoteNew = (current: Location<unknown>) =>
-	current.search ? noteNewHref + current.search : noteNewHref;
+	current.search ? noteNewPathname + current.search : noteNewPathname;
 
 const hrefWithNote = (current: Location<unknown>, noteId: string) =>
 	current.search ? notePathname(noteId) + current.search : notePathname(noteId);
@@ -37,10 +41,4 @@ const MAIN_TITLE = 'SolidStart Notes';
 const makeTitle = (title?: string) =>
 	title ? `${title} - ${MAIN_TITLE}` : MAIN_TITLE;
 
-export {
-	extractNoteId,
-	hrefToNoteEdit,
-	hrefToNoteNew,
-	hrefWithNote,
-	makeTitle,
-};
+export { hrefToHome, hrefToNoteEdit, hrefToNoteNew, hrefWithNote, makeTitle };

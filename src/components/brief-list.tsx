@@ -2,9 +2,14 @@
 import { createSignal, createMemo, For, onMount, Show } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
-import { createAsync, useLocation, useNavigate } from '@solidjs/router';
+import {
+	createAsync,
+	useLocation,
+	useNavigate,
+	useParams,
+} from '@solidjs/router';
 import { getBriefs } from '../api';
-import { extractNoteId, hrefWithNote } from '../route-path';
+import { hrefWithNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
 import { Brief } from './brief';
 
@@ -49,19 +54,20 @@ type Props = {
 export default function BriefList(props: Props) {
 	// Active Note is the one navigated to
 	// until another one is clicked
+	const params = useParams();
 	const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
-	const location = useLocation();
 	const active = createMemo<[string, number]>(
 		(last) => {
-			const navId = extractNoteId(location.pathname);
+			const navId = params.noteId ?? '';
 			const [_id, lastTime] = last;
 			const clicked = clickedId();
 			return clicked[1] > lastTime ? clicked : [navId, performance.now()];
 		},
-		[extractNoteId(location.pathname), performance.now()]
+		[params.noteId ?? '', performance.now()]
 	);
 	const activeId = () => active()[0];
 
+	const location = useLocation();
 	const navigate = useNavigate();
 	const navigateToClicked = (event: MouseEvent) => {
 		const noteId = findNoteId(event.target);

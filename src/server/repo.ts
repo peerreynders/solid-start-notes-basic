@@ -7,7 +7,13 @@ import { makeFromSeed } from './seed';
 import { makeNoteStore } from './types';
 
 import type { MonoTypeOperatorFunction } from 'rxjs';
-import type { Content, Note, NoteInsert, NoteStore, NoteUpdate } from './types';
+import type {
+	Content,
+	NotePersist,
+	NotePersistInsert,
+	NotePersistUpdate,
+	NoteStore,
+} from './types';
 
 const storage = createStorage({
 	driver: fsLiteDriver({
@@ -15,9 +21,9 @@ const storage = createStorage({
 	}),
 });
 
-const maybeNotes = () => storage.getItem<Note[]>('notes');
+const maybeNotes = () => storage.getItem<NotePersist[]>('notes');
 
-function byModifiedDesc(a: Note, b: Note) {
+function byModifiedDesc(a: NotePersist, b: NotePersist) {
 	const updateDifference = b.updatedAt - a.updatedAt;
 	return updateDifference !== 0 ? updateDifference : b.createdAt - a.createdAt;
 }
@@ -45,7 +51,7 @@ const updateNoteStore = (source: Observable<NoteStore>) =>
 			next: (store) => {
 				const sortedStore = makeNoteStore(store.notes.toSorted(byModifiedDesc));
 				storage
-					.setItem<Note[]>('notes', sortedStore.notes)
+					.setItem<NotePersist[]>('notes', sortedStore.notes)
 					.then(() => {
 						destination.next(sortedStore);
 						resolved = true;
@@ -81,7 +87,7 @@ function toNoteTransform(
 	excerpt: string,
 	createdEpochMs: number,
 	updatedEpochMs: number,
-	noteCallback: (note: Note) => void,
+	noteCallback: (note: NotePersist) => void,
 	_error: (err: Error) => void
 ) {
 	noteCallback(
@@ -89,7 +95,7 @@ function toNoteTransform(
 	);
 }
 
-const ensureNotes = (source: Observable<Note[] | null>) =>
+const ensureNotes = (source: Observable<NotePersist[] | null>) =>
 	new Observable<NoteStore>((destination) => {
 		let done = false;
 		const error = (err: Error) => {
@@ -144,15 +150,15 @@ const ensureNotes = (source: Observable<Note[] | null>) =>
 
 type FilterNotesTask = {
 	kind: 0;
-	predicate: ((note: Note) => boolean) | undefined;
-	resolve: (notes: Note[]) => void;
+	predicate: ((note: NotePersist) => boolean) | undefined;
+	resolve: (notes: NotePersist[]) => void;
 	reject: (error: Error) => void;
 };
 
 type FindNoteTask = {
 	kind: 1;
-	predicate: (note: Note) => boolean;
-	resolve: (notes: Note | undefined) => void;
+	predicate: (note: NotePersist) => boolean;
+	resolve: (notes: NotePersist | undefined) => void;
 	reject: (error: Error) => void;
 };
 
@@ -203,8 +209,8 @@ function runSelectNotes(
 
 type UpdateNoteTask = {
 	kind: 2;
-	update: (notes: Note[]) => [Note[], Note | undefined];
-	resolve: (result: Note | undefined) => void;
+	update: (notes: NotePersist[]) => [NotePersist[], NotePersist | undefined];
+	resolve: (result: NotePersist | undefined) => void;
 	reject: (error: Error) => void;
 };
 
@@ -227,7 +233,7 @@ function runUpdateNotes(task: UpdateNoteTask, done: () => void) {
 		done();
 	};
 
-	let updatedNote: Note | undefined;
+	let updatedNote: NotePersist | undefined;
 
 	// stage to update the notes content
 	const updateNotes: MonoTypeOperatorFunction<NoteStore> = (
@@ -333,26 +339,26 @@ function makeTitleWithText(withText?: string) {
 	if (!withText) return undefined;
 
 	const text = withText.toLowerCase();
-	return (note: Note) => note.title.toLowerCase().includes(text);
+	return (note: NotePersist) => note.title.toLowerCase().includes(text);
 }
 
 function selectNotesInTitle(withText?: string) {
 	const predicate = makeTitleWithText(withText);
-	return new Promise<Note[]>((resolve, reject) => {
+	return new Promise<NotePersist[]>((resolve, reject) => {
 		queueTask({ kind: 0, predicate, resolve, reject });
 	});
 }
 
-function selectNote(id: Note['id']) {
-	const predicate = (note: Note) => note.id === id;
-	return new Promise<Note | undefined>((resolve, reject) => {
+function selectNote(id: NotePersist['id']) {
+	const predicate = (note: NotePersist) => note.id === id;
+	return new Promise<NotePersist | undefined>((resolve, reject) => {
 		queueTask({ kind: 1, predicate, resolve, reject });
 	});
 }
 
 const makeInsertNote =
-	(note: NoteInsert) =>
-	(current: Note[]): [Note[], Note] => {
+	(note: NotePersistInsert) =>
+	(current: NotePersist[]): [NotePersist[], NotePersist] => {
 		const createdAt = Date.now();
 		const newNote = makeNote(
 			note.title,
@@ -365,15 +371,15 @@ const makeInsertNote =
 		return [current.toSpliced(current.length, 0, newNote), newNote];
 	};
 
-function insertNote(note: NoteInsert) {
-	return new Promise<Note | undefined>((resolve, reject) => {
+function insertNote(note: NotePersistInsert) {
+	return new Promise<NotePersist | undefined>((resolve, reject) => {
 		queueTask({ kind: 2, update: makeInsertNote(note), resolve, reject });
 	});
 }
 
 const makeUpdateNote =
-	(update: NoteUpdate) =>
-	(current: Note[]): [Note[], Note | undefined] => {
+	(update: NotePersistUpdate) =>
+	(current: NotePersist[]): [NotePersist[], NotePersist | undefined] => {
 		const index = current.findIndex((note) => note.id === update.id);
 		if (index < 0) return [current, undefined];
 
@@ -389,23 +395,23 @@ const makeUpdateNote =
 		return [current.toSpliced(index, 1, updated), updated];
 	};
 
-function updateNote(note: NoteUpdate) {
-	return new Promise<Note | undefined>((resolve, reject) => {
+function updateNote(note: NotePersistUpdate) {
+	return new Promise<NotePersist | undefined>((resolve, reject) => {
 		queueTask({ kind: 2, update: makeUpdateNote(note), resolve, reject });
 	});
 }
 
 const makeDeleteNote =
-	(id: Note['id']) =>
-	(current: Note[]): [Note[], Note | undefined] => {
+	(id: NotePersist['id']) =>
+	(current: NotePersist[]): [NotePersist[], NotePersist | undefined] => {
 		const index = current.findIndex((note) => note.id === id);
 		return index > -1
 			? [current.toSpliced(index, 1), current[index]]
 			: [current, undefined];
 	};
 
-function deleteNote(id: Note['id']) {
-	return new Promise<Note | undefined>((resolve, reject) => {
+function deleteNote(id: NotePersist['id']) {
+	return new Promise<NotePersist | undefined>((resolve, reject) => {
 		queueTask({ kind: 2, update: makeDeleteNote(id), resolve, reject });
 	});
 }

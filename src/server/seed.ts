@@ -4,7 +4,12 @@ import { makeNoteStore } from './types';
 import { excerpt } from './excerpt';
 
 import type { Observer, Subscriber } from 'rxjs';
-import type { Content, NoteStore, Note, NoteTransform } from './types';
+import type {
+	Content,
+	NoteStore,
+	NotePersist,
+	NotePersistTransform,
+} from './types';
 
 const content: Content = [
 	['Meeting Notes', 'This is an example note. It contains **Markdown**!'],
@@ -42,10 +47,10 @@ function startOfYear(timestamp: number) {
 	return new Date(date.getFullYear(), 0, 1).getTime();
 }
 
-function makeFromSeed(transform: NoteTransform) {
-	const source = new Observable((observer: Observer<Note[]>) => {
+function makeFromSeed(transform: NotePersistTransform) {
+	const source = new Observable((observer: Observer<NotePersist[]>) => {
 		let lastError: Error | undefined;
-		const notes: Note[] = [];
+		const notes: NotePersist[] = [];
 		const now = Date.now();
 		const created = makeEpochMsBetween(content.length, startOfYear(now), now);
 
@@ -56,7 +61,7 @@ function makeFromSeed(transform: NoteTransform) {
 			observer.error(lastError);
 		};
 
-		const next = (note: Note) => {
+		const next = (note: NotePersist) => {
 			if (lastError || notes.length >= content.length) return;
 
 			notes.push(note);
@@ -86,7 +91,7 @@ function makeFromSeed(transform: NoteTransform) {
 	const fromSeed = new Observable((destination: Subscriber<NoteStore>) => {
 		// decouple destination from synchronous firehose
 		source.subscribe(
-			operate<Note[], NoteStore>({
+			operate<NotePersist[], NoteStore>({
 				destination,
 				next: (notes) => void destination.next(makeNoteStore(notes)),
 				complete: () => void destination.complete(),

@@ -1,6 +1,5 @@
 // file: src/types.ts
-export { makeNoteBrief } from './server/types';
-export type { NoteBrief } from './server/types';
+export type { Note, NoteBrief } from './server/types';
 
 export type BriefDateFormat = (
 	epochTimestamp: number

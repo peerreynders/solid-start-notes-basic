@@ -4,7 +4,6 @@ export type Content = [title: string, body: string][];
 export type NoteInsert = {
 	title: string;
 	body: string;
-	excerpt: string;
 };
 
 export type NoteUpdate = {
@@ -16,27 +15,47 @@ export type Note = NoteUpdate & {
 	updatedAt: number;
 };
 
-export type NoteTransform = (
+export type NotePersistInsert = {
+	excerpt: string;
+} & NoteInsert;
+
+export type NotePersistUpdate = {
+	excerpt: string;
+} & NoteUpdate;
+
+export type NotePersist = {
+	excerpt: string;
+} & Note;
+
+export type NotePersistTransform = (
 	content: Content[number],
 	excerpt: string,
 	createdAt: number, // milliseconds since ECMAScript epoch
 	updatedAt: number,
-	noteCallback: (note: Note) => void,
+	noteCallback: (note: NotePersist) => void,
 	error: (err: Error) => void
 ) => void;
 
-const makeNoteStore = (notes: Note[]) =>
+const makeNoteStore = (notes: NotePersist[]) =>
 	({ kind: 'note-store', notes }) as const;
 
 export type NoteStore = ReturnType<typeof makeNoteStore>;
 
-const makeNoteBrief = (
-	id: Note['id'],
-	title: Note['title'],
-	updatedAt: number,
-	summary = ''
-) => ({ id, title, updatedAt, summary });
+const toNoteBrief = (note: NotePersist) => ({
+	id: note.id,
+	title: note.title,
+	updatedAt: note.updatedAt,
+	summary: note.excerpt,
+});
 
-export type NoteBrief = ReturnType<typeof makeNoteBrief>;
+export type NoteBrief = ReturnType<typeof toNoteBrief>;
 
-export { makeNoteBrief, makeNoteStore };
+const toNote = (note: NotePersist) => ({
+	id: note.id,
+	title: note.title,
+	body: note.body,
+	createdAt: note.createdAt,
+	updatedAt: note.updatedAt,
+});
+
+export { makeNoteStore, toNote, toNoteBrief };
