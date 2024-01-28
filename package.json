@@ -15,6 +15,7 @@
     "@solidjs/meta": "^0.29.3",
     "@solidjs/router": "^0.10.9",
     "@solidjs/start": "^0.4.10",
+    "dompurify": "^3.0.8",
     "marked": "^11.1.1",
     "nanoid": "^5.0.4",
     "rxjs": "8.0.0-alpha.14",
@@ -27,6 +28,7 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@types/dompurify": "^3.0.5",
     "@types/sanitize-html": "^2.9.5",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",

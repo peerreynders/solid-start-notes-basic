@@ -3,7 +3,7 @@ import { Title } from '@solidjs/meta';
 import { useParams } from '@solidjs/router';
 import { makeTitle } from '../route-path';
 
-export default function Note() {
+export default function NoteEdit() {
 	const params = useParams();
 
 	return (

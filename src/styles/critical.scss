@@ -1,3 +1,4 @@
+// file: src/styles/critical.scss
 // settings
 // tools
 // generic (e.g. reset)
@@ -153,6 +154,17 @@ body {
 	margin-inline: 20px 20px;
 }
 
+%o-note__title {
+	line-height: 1.3;
+	flex-grow: 1;
+	overflow-wrap: break-word;
+	margin-inline-start: 12px;
+}
+
+%o-note__preview {
+	margin-block-start: 50px;
+}
+
 .c-note {
 	background: var(--white);
 	box-shadow:
@@ -173,10 +185,7 @@ body {
 		margin-inline-start: -12px;
 
 		& h1 {
-			line-height: 1.3;
-			flex-grow: 1;
-			overflow-wrap: break-word;
-			margin-inline-start: 12px;
+			@extend %o-note__title;
 		}
 	}
 
@@ -195,7 +204,7 @@ body {
 }
 
 .c-note-preview {
-	margin-block-start: 50px;
+	@extend %o-note__preview;
 }
 
 .o-from-markdown {
@@ -221,6 +230,171 @@ body {
 
 	& img {
 		width: 100%;
+	}
+}
+
+@mixin o-shared-bottom {
+	margin-bottom: 20px;
+}
+
+%o-note-edit {
+	background: var(--white);
+	display: flex;
+	height: 100%;
+	width: 100%;
+	padding: 58px;
+	overflow-y: auto;
+	@include o-shared-bottom;
+}
+
+%o-note-edit__form {
+	display: flex;
+	flex-direction: column;
+	width: 400px;
+	flex-shrink: 0;
+	position: sticky;
+	top: 0;
+}
+
+%o-note-edit__preview {
+	margin-inline-start: 40px;
+	width: 100%;
+}
+
+%o-note-edit__menu {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.c-note-edit {
+	@extend %o-note-edit;
+
+	&__form {
+		@extend %o-note-edit__form;
+
+		& input,
+		& textarea {
+			background: none;
+			border: 1px solid var(--gray-70);
+			border-radius: 2px;
+			font-family: var(--monospace);
+			font-size: 0.8rem;
+			padding: 12px;
+			outline-style: none;
+		}
+
+		& input:focus,
+		& textarea:focus {
+			box-shadow: var(--outline-box-shadow);
+		}
+
+		& input {
+			height: 44px;
+			margin-bottom: 16px;
+		}
+
+		& textarea {
+			height: 100%;
+			max-width: 400px;
+		}
+	}
+
+	&__preview {
+		@extend %o-note-edit__preview;
+	}
+
+	&__menu {
+		@extend %o-note-edit__menu;
+	}
+
+	&__done,
+	&__delete {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-radius: 100px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		padding: 6px 20px 8px;
+		cursor: pointer;
+		font-weight: 700;
+		margin-inline-start: 12px;
+		outline-style: none;
+		transition: all 0.2s ease-in-out;
+
+		&:disabled {
+			opacity: 0.5;
+		}
+
+		&[disabled] {
+			opacity: 0.5;
+		}
+
+		& > img {
+			margin-inline-end: 12px;
+		}
+	}
+
+	&__done {
+		border: none;
+		background: var(--primary-blue);
+		color: var(--white);
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow-contrast);
+		}
+
+		&:hover:not([disabled]) {
+			background: var(--secondary-blue);
+		}
+
+		& > img {
+			width: 14px;
+		}
+	}
+
+	&__delete {
+		border: 1px solid var(--red-25);
+		background: var(--white);
+		color: var(--red-25);
+
+		&:focus {
+			box-shadow: var(--outline-box-shadow);
+		}
+
+		&:hover:not([disabled]) {
+			background: var(--red-25);
+			color: var(--white);
+
+			/* Hack to color our svg */
+			& img {
+				filter: grayscale(1) invert(1) brightness(2);
+			}
+		}
+
+		& > img {
+			width: 10px;
+		}
+	}
+
+	&__label-preview {
+		// label
+		display: inline-block;
+		border-radius: 100px;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		font-weight: 700;
+		padding: 4px 14px;
+		@include o-shared-bottom;
+		// preview
+		background: rgba(38, 183, 255, 0.15);
+		color: var(--primary-blue);
+	}
+
+	&__note-title {
+		@extend %o-note__title;
 	}
 }
 
@@ -364,7 +538,7 @@ body {
 
 //https://youtu.be/ot-LoU0MGb0?t=1575
 
-@mixin o-skeleton {
+%o-skeleton {
 	height: 100%;
 	background-color: #eee;
 	background-image: linear-gradient(90deg, #eee, #f5f5f5, #eee);
@@ -384,16 +558,12 @@ body {
 	&:first-of-type {
 		margin: 0;
 	}
-
-	&--button {
-		border-radius: 100px;
-		padding: 6px 20px 8px;
-		width: auto;
-	}
 }
 
-%o-skeleton {
-	@include o-skeleton;
+%o-skeleton--button {
+	border-radius: 100px;
+	padding: 6px 20px 8px;
+	width: auto;
 }
 
 @mixin o-stack {
@@ -435,7 +605,7 @@ ul.c-brief-list-skeleton {
 
 	&__brief {
 		@include o-brief;
-		@include o-skeleton;
+		@extend %o-skeleton;
 		height: 5em;
 	}
 }
@@ -591,6 +761,67 @@ ul.c-brief-list {
 		transition:
 			transform 250ms ease-out,
 			opacity 250ms ease-in;
+	}
+}
+
+.c-note-edit-skeleton {
+	@extend %o-note-edit;
+
+	&__form {
+		@extend %o-note-edit__form;
+		@include o-stack;
+	}
+
+	&__title,
+	&__body {
+		@extend %o-skeleton;
+	}
+
+	&__title {
+		height: 3rem;
+	}
+
+	&__body {
+		height: 100%;
+	}
+
+	&__preview {
+		@extend %o-note-edit__preview;
+	}
+
+	&__menu {
+		@extend %o-note-edit__menu;
+	}
+
+	&__done,
+	&__delete {
+		@extend %o-skeleton;
+		@extend %o-skeleton--button;
+		width: 8em;
+		height: 2.5em;
+	}
+
+	&__delete {
+		margin-inline: 12px 0;
+	}
+
+	&__note-title {
+		@extend %o-note__title;
+		@extend %o-skeleton;
+
+		height: 3rem;
+		width: 65%;
+		margin-inline: 12px 1em;
+	}
+
+	&__note-preview {
+		@extend %o-note__preview;
+		@include o-stack;
+
+		& div {
+			@extend %o-skeleton;
+			height: 1.5em;
+		}
 	}
 }
 

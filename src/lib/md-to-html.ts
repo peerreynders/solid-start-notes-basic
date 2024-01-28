@@ -1,24 +1,11 @@
 // file: src/lib/md-to-html.ts
 import { marked } from 'marked';
-import sanitizeHtml from 'sanitize-html';
+import DOMPurify from 'dompurify';
 
-const OPTIONS = {
-	allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-		'img',
-		'h0',
-		'h1',
-		'h2',
-	]),
-	allowedAttributes: Object.assign(
-		{},
-		sanitizeHtml.defaults.allowedAttributes,
-		{
-			img: ['alt', 'src'],
-		}
-	),
-};
-
-const mdToHtml = (mdText: string) =>
-	sanitizeHtml(marked.parse(mdText, { async: false }) as string, OPTIONS);
+// Vite pulls in node APIs due to sanitizeHtml's optional postCSS support
+// Client side use DOMPurify instead
+function mdToHtml(mdText: string) {
+	return DOMPurify.sanitize(marked.parse(mdText, { async: false }) as string);
+}
 
 export { mdToHtml };

@@ -12,6 +12,7 @@ import { getBriefs } from '../api';
 import { hrefWithNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
 import { Brief } from './brief';
+import { useLastEdit } from './app-context';
 
 import type { NoteBrief } from '../types';
 
@@ -52,10 +53,24 @@ type Props = {
 };
 
 export default function BriefList(props: Props) {
-	// Active Note is the one navigated to
-	// until another one is clicked
 	const params = useParams();
 	const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
+
+	// Highlight clicked brief BEFORE initiating
+	// navigation to the associated note
+	const navigate = useNavigate();
+	const location = useLocation();
+	const navigateToClicked = (event: MouseEvent) => {
+		const noteId = findNoteId(event.target);
+		if (!noteId) return;
+
+		setClickedId([noteId, performance.now()]);
+		navigate(hrefWithNote(location, noteId));
+	};
+
+	// Choose the most recent of
+	// - ID of note navigated to
+	// - ID of brief clicked
 	const active = createMemo<[string, number]>(
 		(last) => {
 			const navId = params.noteId ?? '';
@@ -65,19 +80,35 @@ export default function BriefList(props: Props) {
 		},
 		[params.noteId ?? '', performance.now()]
 	);
+
+	// Active ID is the one navigated to
+	// until another brief is clicked
 	const activeId = () => active()[0];
 
-	const location = useLocation();
-	const navigate = useNavigate();
-	const navigateToClicked = (event: MouseEvent) => {
-		const noteId = findNoteId(event.target);
-		if (!noteId) return;
+	// updatedId
+	const NO_UPDATED_ID = '';
+	const { lastEdit } = useLastEdit();
+	const updatedId = createMemo(() => {
+		const last = lastEdit();
+		switch (last?.[0]) {
+			case undefined:
+			case 'delete': {
+				return NO_UPDATED_ID;
+			}
+			case 'update': {
+				return last[1];
+			}
+			case 'new': {
+				return typeof params.noteId === 'string' && params.noteId.length > 0
+					? params.noteId
+					: NO_UPDATED_ID;
+			}
+			default:
+				return NO_UPDATED_ID;
+		}
+	});
 
-		setClickedId([noteId, performance.now()]);
-		navigate(hrefWithNote(location, noteId));
-	};
-
-	// Combining async with Store. See:
+	// Combining async with Store. See:cc
 	// https://github.com/solidjs/solid-realworld/blob/f6e77ecd652bf32f0dc9238f291313fd1af7e98b/src/store/createComments.js#L4-L8
 	// Note: briefs is a signal carrying a finer grained store
 	const initialValue: NoteBrief[] = [];
@@ -115,7 +146,7 @@ export default function BriefList(props: Props) {
 									updatedAt={brief.updatedAt}
 									active={activeId() === brief.id}
 									pending={false}
-									flushed={false}
+									flushed={updatedId() === brief.id}
 									format={format}
 								/>
 							</li>
