@@ -1,13 +1,18 @@
 // @refresh reload
-import { Suspense } from 'solid-js';
-import { Route, Router, useSearchParams } from '@solidjs/router';
+// file: src/app.tsx
+import { mergeProps, Suspense } from 'solid-js';
+import {
+	Route,
+	Router,
+	useSearchParams,
+	RouteSectionProps,
+} from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
 import EditButton from './components/edit-button';
 import SearchField from './components/search-field';
 import BriefList from './components/brief-list';
 import BriefListSkeleton from './components/brief-list-skeleton';
 import Note from './routes/note';
-import NoteEdit from './routes/note-edit';
 import NoteNew from './routes/note-new';
 import NoteNone from './routes/note-none';
 import NotFound from './routes/not-found';
@@ -50,12 +55,19 @@ function Layout(props: ParentProps) {
 	);
 }
 
+type NotePropsMerge = [{ edit: boolean }, RouteSectionProps];
+
 export default function App() {
+	const Edit = (props: RouteSectionProps) =>
+		Note(mergeProps<NotePropsMerge>({ edit: true }, props));
+	const Display = (props: RouteSectionProps) =>
+		Note(mergeProps<NotePropsMerge>({ edit: false }, props));
+
 	return (
 		<Router root={Layout}>
 			<Route path="/new" component={NoteNew} />
-			<Route path="/notes/:noteId/edit" component={NoteEdit} />
-			<Route path="/notes/:noteId" component={Note} />
+			<Route path="/notes/:noteId/edit" component={Edit} />
+			<Route path="/notes/:noteId" component={Display} />
 			<Route path="/" component={NoteNone} />
 			<Route path="*404" component={NotFound} />
 		</Router>

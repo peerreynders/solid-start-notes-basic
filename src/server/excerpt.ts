@@ -4,7 +4,7 @@ import sanitizeHtml from 'sanitize-html';
 
 const WORD_COUNT = 20;
 
-function excerpt(body: string) {
+function excerptFrom(body: string) {
 	// - convert markdown to HTML
 	// - strip tags from HTML
 	// - only use the first 20 words
@@ -18,4 +18,4 @@ function excerpt(body: string) {
 	return words.length > WORD_COUNT ? begin + '…' : begin;
 }
 
-export { excerpt };
+export { excerptFrom };

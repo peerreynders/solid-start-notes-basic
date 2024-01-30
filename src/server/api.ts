@@ -1,7 +1,8 @@
 // file: src/server/api.ts
 'use server';
-import { selectNote, selectNotesInTitle } from './repo';
+import { insertNote, selectNote, selectNotesInTitle, updateNote } from './repo';
 import { toNote, toNoteBrief, type NotePersist } from './types';
+import { excerptFrom } from './excerpt';
 
 /*
 const delay =
@@ -15,15 +16,21 @@ const delay =
 
 const toBriefs = (notes: NotePersist[]) => notes.map(toNoteBrief);
 
-function getBriefs(search: string | undefined) {
-	return selectNotesInTitle(search).then(toBriefs);
-}
+const getBriefs = (search: string | undefined) =>
+	selectNotesInTitle(search).then(toBriefs);
 
 const toMaybeNote = (note: NotePersist | undefined) =>
 	note ? toNote(note) : undefined;
 
-function getNote(id: string) {
-	return selectNote(id).then(toMaybeNote);
+const getNote = (id: string) => selectNote(id).then(toMaybeNote);
+
+function upsertNote(title: string, body: string, id?: string) {
+	const excerpt = excerptFrom(body);
+	return (
+		typeof id === 'string' && id.length > 0
+			? updateNote({ id, title, body, excerpt })
+			: insertNote({ title, body, excerpt })
+	).then(toMaybeNote);
 }
 
-export { getBriefs, getNote };
+export { getBriefs, getNote, upsertNote };

@@ -1,55 +1,26 @@
 // file: src/routes/note.tsx
-import { Show } from 'solid-js';
-import { isServer, NoHydration } from 'solid-js/web';
+import { Show, Suspense } from 'solid-js';
+import { NoHydration } from 'solid-js/web';
+import { createAsync, useNavigate } from '@solidjs/router';
 import { Title } from '@solidjs/meta';
-import {
-	createAsync,
-	useLocation,
-	useNavigate,
-	useParams,
-} from '@solidjs/router';
-import { hrefToHome, makeTitle } from '../route-path';
-import { makeNoteDateFormat } from '../lib/date-time';
+import { makeTitle } from '../route-path';
 import { getNote } from '../api';
+import { makeTransformOrNavigate } from './note-common';
+import NoteEditor from '../components/note-edit';
+import NoteEditSkeleton from '../components/note-edit-skeleton';
 import EditButton from '../components/edit-button';
 import NotePreview from '../components/note-preview';
 
-import type { Note } from '../types';
+import type { RouteSectionProps } from '@solidjs/router';
 
-export default function Note() {
-	const noteDateFormat = isServer
-		? makeNoteDateFormat()
-		: makeNoteDateFormat(Intl.DateTimeFormat().resolvedOptions());
-	const toNoteExpanded = ({ id, title, body, updatedAt }: Note) => {
-		const [updated, updatedISO] = noteDateFormat(updatedAt);
-		return {
-			id,
-			title,
-			body,
-			updatedAt,
-			updatedISO,
-			updated,
-		};
-	};
+type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
-	const params = useParams();
-	const location = useLocation();
-	const navigate = useNavigate();
-	const navigateOnNotFound = (maybeNote: Note | undefined) => {
-		if (maybeNote) return toNoteExpanded(maybeNote);
-
-		navigate(hrefToHome(location), { replace: true });
-	};
-	const note = createAsync(
-		() => getNote(params.noteId).then(navigateOnNotFound),
-		{ deferStream: true }
-	);
-
+function NoteDisplay(props: { note: NoteExpanded }) {
 	return (
-		<Show when={note()}>
+		<Show when={props.note}>
 			{(note) => (
 				<>
-					<Title>{makeTitle()}</Title>
+					<Title>{makeTitle(note().id)}</Title>
 					<div class="c-note">
 						<div class="c-note__header">
 							<h1>{note().title}</h1>
@@ -68,5 +39,35 @@ export default function Note() {
 				</>
 			)}
 		</Show>
+	);
+}
+
+export type NoteProps = RouteSectionProps & { edit: boolean };
+
+export default function Note(props: NoteProps) {
+	const isEdit = () => props.edit;
+	const noteId = () => props.params.noteId;
+	const navigate = useNavigate();
+	const transformOrNavigate = makeTransformOrNavigate(props.location, navigate);
+	const note = createAsync(() => getNote(noteId()).then(transformOrNavigate), {
+		deferStream: true,
+	});
+	return (
+		<>
+			<Title>{makeTitle(isEdit() ? `Edit ${noteId()}` : noteId())}</Title>
+			<Show when={isEdit()} fallback={<NoteDisplay note={note()} />}>
+				<Suspense fallback={<NoteEditSkeleton />}>
+					<Show when={note()}>
+						{(note) => (
+							<NoteEditor
+								noteId={note().id}
+								initialTitle={note().title}
+								initialBody={note().body}
+							/>
+						)}
+					</Show>
+				</Suspense>
+			</Show>
+		</>
 	);
 }

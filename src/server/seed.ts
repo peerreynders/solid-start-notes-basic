@@ -1,7 +1,7 @@
 // file: src/server/seed.ts
 import { Observable, operate } from 'rxjs';
 import { makeNoteStore } from './types';
-import { excerpt } from './excerpt';
+import { excerptFrom } from './excerpt';
 
 import type { Observer, Subscriber } from 'rxjs';
 import type {
@@ -77,7 +77,7 @@ function makeFromSeed(transform: NotePersistTransform) {
 		for (let i = 0; i < content.length; i += 1)
 			transform(
 				content[i],
-				excerpt(content[i][1]),
+				excerptFrom(content[i][1]),
 				created[i],
 				now,
 				next,
