@@ -1,10 +1,15 @@
-
+esb-run.mjs
+/.data
 dist
 .solid
 .output
 .vercel
 .netlify
 netlify
+
+# Environment
+.env
+.env*.local
 
 # dependencies
 /node_modules
@@ -22,10 +27,3 @@ gitignore
 # System Files
 .DS_Store
 Thumbs.db
-
-# logs
-*.log*
-
-# environment variables
-.env
-.env.production 

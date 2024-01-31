@@ -1,22 +1,14 @@
-export type NoteInsert = {
-  title: string;
-  body: string;
-};
+// file: src/types.ts
+export type { Note, NoteBrief } from './server/types';
 
-export type NoteUpdate = {
-  id: string;
-} & NoteInsert;
+export type BriefDateFormat = (
+	epochTimestamp: number
+) => [display: string, iso: string];
 
-export type Note = NoteUpdate & {
-  createdAt: string;
-  updatedAt: string;
-};
+const editIntent = ['insert', 'update', 'delete'] as const;
+export type EditIntent = (typeof editIntent)[number];
 
-export type NoteView = Note & {
-  summary: string;
-};
+const isEditIntent = (intent: string): intent is EditIntent =>
+	(editIntent as ReadonlyArray<string>).includes(intent);
 
-export type LastEdit = 
-   ['new']
- | ['update', string ]
- | ['delete', string ];
+export { isEditIntent };

@@ -1,12 +1,14 @@
+// file: src/components/spinner.tsx
 export type Props = {
-  active: boolean;
-}
+	active: boolean;
+};
 
 export default function Spinner(props: Props) {
-  const classList = () => 'spinner' +
-    (props.active ? ' spinner--active' : '');
-
-  return (
-    <div class={ classList() } role="progressbar" aria-busy={ props.active } />
-  );
+	return (
+		<div
+			class={'c-spinner' + (props.active ? ' c-spinner--active' : '')}
+			role="progressbar"
+			aria-busy={props.active}
+		/>
+	);
 }

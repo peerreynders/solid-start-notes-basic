@@ -1,44 +1,41 @@
 {
   "name": "solid-start-notes-basic",
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "solid-start dev",
-    "build": "solid-start build",
-    "start": "solid-start start"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/peerreynders/solid-start-notes-basic.git"
-  },
-  "keywords": [],
-  "author": "Peer Reynders",
-  "license": "MIT",
-  "homepage": "https://github.com/peerreynders/solid-start-notes-basic#readme",
-  "bugs": {
-    "url": "https://github.com/peerreynders/solid-start-notes-basic/issues"
-  },
-  "devDependencies": {
-    "@types/dompurify": "^2.4.0",
-    "@types/marked": "^4.0.7",
-    "@types/sanitize-html": "^2.6.2",
-     "solid-start-node": "^0.2.0",
-    "typescript": "^4.8.4",
-    "vite": "^3.1.8"
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "format": "prettier --write ./src",
+    "lint:es": "eslint ./src",
+    "lint:types": "./node_modules/.bin/tsc --noEmit",
+    "esb:bundle": "./node_modules/vinxi/node_modules/.bin/esbuild esb-run.ts --bundle --packages=external --platform=node --format=esm --outfile=./esb-run.mjs",
+    "esb:run": "pnpm run esb:bundle && node ./esb-run.mjs"
   },
   "dependencies": {
-    "@solidjs/meta": "^0.28.0",
-    "@solidjs/router": "^0.5.0",
-    "dompurify": "^2.4.1",
-    "lowdb": "^4.0.1",
-    "marked": "^4.2.3",
-    "nanoid": "^4.0.0",
-    "sanitize-html": "^2.7.3",
-    "solid-js": "^1.6.2",
-    "solid-start": "^0.2.0",
-    "undici": "^5.11.0"
+    "@solidjs/meta": "^0.29.3",
+    "@solidjs/router": "^0.10.10",
+    "@solidjs/start": "^0.4.11",
+    "dompurify": "^3.0.8",
+    "marked": "^11.1.1",
+    "nanoid": "^5.0.4",
+    "rxjs": "8.0.0-alpha.14",
+    "sanitize-html": "^2.11.0",
+    "solid-js": "^1.8.12",
+    "unstorage": "^1.10.1",
+    "vinxi": "^0.1.10"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/sanitize-html": "^2.9.5",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.2",
+    "sass": "^1.69.7",
+    "typescript": "^5.3.3"
   }
 }

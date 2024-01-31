@@ -1,66 +1,77 @@
-import { isServer } from 'solid-js/web';
-import { useServerContext } from 'solid-start';
+// file: src/route-path.ts
+import { type Location } from '@solidjs/router';
 
-let __origin: string | undefined;
+export type SearchParams = {
+	search: string;
+};
 
-function serverOrigin() {
-  if (__origin) return __origin;
-
-  if (isServer) {
-    const event = useServerContext();
-    const kState = Object.getOwnPropertySymbols(event.request).find(
-      (s: Symbol) => s.toString() === 'Symbol(state)'
-    );
-    if (!kState) throw new Error(`Unable to locate "Symbol(state)" on request`);
-
-    // @ts-expect-error
-    const url = event.request[kState]?.url as URL | undefined;
-    if (!url) throw new Error(`Unable to access URL object on request`);
-
-    __origin = url.origin;
-  } else {
-    __origin = location.origin;
-  }
-
-  return __origin;
-}
-
-function notesSearchHref(searchText: string = '') {
-  const path = serverOrigin() + '/api/notes';
-  return searchText.length < 1
-    ? path
-    : `${path}?search=${encodeURIComponent(searchText)}`;
+function toBriefSearch(location: Location<unknown>) {
+	const params = new URLSearchParams(location.search);
+	return params.get('search') ?? undefined;
 }
 
 function extractNoteId(href: string) {
-  const BEFORE = '/notes/';
-  let start = href.indexOf(BEFORE);
-  if (start < 0) return '';
-  start += BEFORE.length;
-  const end = href.indexOf('/', start);
-  return end < 0 ? href.substring(start) : href.substring(start, end);
+	const BEFORE = '/notes/';
+	let start = href.indexOf(BEFORE);
+	if (start < 0) return '';
+	start += BEFORE.length;
+	const end = href.indexOf('/', start);
+	return end < 0 ? href.slice(start) : href.slice(start, end);
 }
 
-const homeHref = '/';
+const homePathname = '/';
+const noteNewPathname = '/new';
+const notePathname = (noteId: string) => `/notes/${noteId}`;
+const noteEditPathname = (noteId: string) => `/notes/${noteId}/edit`;
 
-const noteNewHref = '/new';
+const toRootpath = (current: Location<unknown>) =>
+	current.search ? current.pathname + current.search : current.pathname;
 
-const noteHref = (id: string) => `/notes/${id}`;
+// https://github.com/whatwg/url/issues/531#issuecomment-660806926
+// add a fake base URL that enables the parse
+const searchFromRootpath = (rootpath: string) =>
+	new URL(rootpath, 'thismessage:/').search ?? '';
 
-const noteEditHref = (id: string) => `/notes/${id}/edit`;
+const searchParamFromSearch = (search: string) =>
+	search.length > 0 ? new URLSearchParams(search).get('search') ?? '' : '';
 
-const noteEditHrefMaybe = (id: string | undefined) => {
-  if (!id) return '';
+const rootpathToHome = (search = '') => homePathname + search;
 
-  return noteEditHref(id);
-};
+const rootpathWithNote = (noteId: string, search = '') =>
+	notePathname(noteId) + search;
+
+function hrefToNoteEdit(current: Location<unknown>) {
+	const noteId = extractNoteId(location.pathname);
+	if (noteId.length < 1)
+		throw new Error('Pathname was expected to contain a note ID');
+
+	return noteEditPathname(noteId) + (current.search ?? '');
+}
+
+const hrefToHome = (current: Location<unknown>) =>
+	homePathname + (current.search ?? '');
+
+const hrefToNoteNew = (current: Location<unknown>) =>
+	noteNewPathname + (current.search ?? '');
+
+const hrefWithNote = (current: Location<unknown>, noteId: string) =>
+	notePathname(noteId) + (current.search ?? '');
+
+const MAIN_TITLE = 'SolidStart Notes';
+
+const makeTitle = (title?: string) =>
+	title ? `${title} - ${MAIN_TITLE}` : MAIN_TITLE;
 
 export {
-  homeHref,
-  noteNewHref,
-  noteHref,
-  noteEditHref,
-  noteEditHrefMaybe,
-  notesSearchHref,
-  extractNoteId,
+	hrefToHome,
+	hrefToNoteEdit,
+	hrefToNoteNew,
+	hrefWithNote,
+	makeTitle,
+	rootpathToHome,
+	rootpathWithNote,
+	searchFromRootpath,
+	searchParamFromSearch,
+	toBriefSearch,
+	toRootpath,
 };
