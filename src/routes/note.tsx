@@ -6,8 +6,11 @@ import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
 import { getNote } from '../api';
 import { makeTransformOrNavigate } from './note-common';
-import NoteEditor from '../components/note-edit';
-import NoteEditSkeleton from '../components/note-edit-skeleton';
+import {
+	NoteSkeletonDisplay,
+	NoteSkeletonEdit,
+} from '../components/note-skeleton';
+import NoteEdit from '../components/note-edit';
 import EditButton from '../components/edit-button';
 import NotePreview from '../components/note-preview';
 
@@ -17,28 +20,30 @@ type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
 function NoteDisplay(props: { note: NoteExpanded }) {
 	return (
-		<Show when={props.note}>
-			{(note) => (
-				<>
-					<Title>{makeTitle(note().id)}</Title>
-					<div class="c-note">
-						<div class="c-note__header">
-							<h1>{note().title}</h1>
-							<div class="c-note__menu" role="menubar">
-								<small class="c-note__updated" role="status">
-									Last updated on{' '}
-									<NoHydration>
-										<time dateTime={note().updatedISO}>{note().updated}</time>
-									</NoHydration>
-								</small>
-								<EditButton kind={'edit'}>Edit</EditButton>
+		<Suspense fallback={<NoteSkeletonDisplay />}>
+			<Show when={props.note}>
+				{(note) => (
+					<>
+						<Title>{makeTitle(note().id)}</Title>
+						<div class="c-note">
+							<div class="c-note__header">
+								<h1>{note().title}</h1>
+								<div class="c-note__menu" role="menubar">
+									<small class="c-note__updated" role="status">
+										Last updated on{' '}
+										<NoHydration>
+											<time dateTime={note().updatedISO}>{note().updated}</time>
+										</NoHydration>
+									</small>
+									<EditButton kind={'edit'}>Edit</EditButton>
+								</div>
 							</div>
+							<NotePreview body={note().body} />
 						</div>
-						<NotePreview body={note().body} />
-					</div>
-				</>
-			)}
-		</Show>
+					</>
+				)}
+			</Show>
+		</Suspense>
 	);
 }
 
@@ -56,10 +61,10 @@ export default function Note(props: NoteProps) {
 		<>
 			<Title>{makeTitle(isEdit() ? `Edit ${noteId()}` : noteId())}</Title>
 			<Show when={isEdit()} fallback={<NoteDisplay note={note()} />}>
-				<Suspense fallback={<NoteEditSkeleton />}>
+				<Suspense fallback={<NoteSkeletonEdit />}>
 					<Show when={note()}>
 						{(note) => (
-							<NoteEditor
+							<NoteEdit
 								noteId={note().id}
 								initialTitle={note().title}
 								initialBody={note().body}

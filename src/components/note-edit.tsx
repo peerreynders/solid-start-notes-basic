@@ -19,7 +19,7 @@ const maybeNoteId = (maybe: string | undefined) =>
 
 export default function NoteEdit(props: Props) {
 	const isUpdate = () => Boolean(maybeNoteId(props.noteId));
-	const [intent, _setIntent] = createSignal<EditIntent>(
+	const [intent, setIntent] = createSignal<EditIntent>(
 		isUpdate() ? 'update' : 'insert'
 	);
 	const [busy, setBusy] = createSignal(false);
@@ -56,11 +56,36 @@ export default function NoteEdit(props: Props) {
 
 		setBusy(true);
 		e.stopPropagation();
+		// `intent()` informs editAction whether to
+		// perform `insert` (new) or `update` (edit)
+		//
+		// inform the rest of the application
+		// of impending `new` or `edit`
 		const id = maybeNoteId(props.noteId);
-		sendLastEdit(id ? ['update', id] : ['new']);
+		sendLastEdit(id ? ['edit', id] : ['new']);
 
 		noteForm.requestSubmit();
 	};
+
+	const deleteNote = (
+		e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }
+	) => {
+		const id = maybeNoteId(props.noteId);
+		if (!(noteForm && id)) return;
+
+		setBusy(true);
+		e.stopPropagation();
+		// inform editAction to perform delete
+		setIntent('delete');
+		// inform the rest of the application
+		// of impending delete
+		sendLastEdit(['delete', id]);
+		// submit editAction
+		noteForm.requestSubmit();
+	};
+
+	// clear signal
+	sendLastEdit(undefined);
 
 	return (
 		<div class="c-note-edit">
@@ -115,6 +140,7 @@ export default function NoteEdit(props: Props) {
 							class="c-note-edit__delete"
 							role="menuitem"
 							disabled={busy()}
+							onClick={deleteNote}
 						>
 							<img
 								src="/cross.svg"

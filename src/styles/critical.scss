@@ -165,7 +165,15 @@ body {
 	margin-block-start: 50px;
 }
 
-.c-note {
+%o-note__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap-reverse;
+	margin-inline-start: -12px;
+}
+
+%o-note {
 	background: var(--white);
 	box-shadow:
 		0px 0px 5px rgba(0, 0, 0, 0.1),
@@ -176,13 +184,13 @@ body {
 	min-width: 400px;
 	padding: 8%;
 	overflow-y: auto;
+}
+
+.c-note {
+	@extend %o-note;
 
 	&__header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap-reverse;
-		margin-inline-start: -12px;
+		@extend %o-note__header;
 
 		& h1 {
 			@extend %o-note__title;
@@ -764,7 +772,45 @@ ul.c-brief-list {
 	}
 }
 
-.c-note-edit-skeleton {
+@mixin o-note-skeleton-button {
+	@extend %o-skeleton;
+	@extend %o-skeleton--button;
+	width: 8em;
+	height: 2.5em;
+}
+
+.c-note-skeleton-title.c-note-skeleton-title {
+	@extend %o-note__title;
+	@extend %o-skeleton;
+
+	height: 3rem;
+	width: 65%;
+	margin-inline: 12px 1em;
+}
+
+.c-note-skeleton-preview {
+	@extend %o-note__preview;
+	@include o-stack;
+
+	& div {
+		@extend %o-skeleton;
+		height: 1.5em;
+	}
+}
+
+.c-note-skeleton-display {
+	@extend %o-note;
+
+	&__header {
+		@extend %o-note__header;
+	}
+
+	&__done {
+		@include o-note-skeleton-button;
+	}
+}
+
+.c-note-skeleton-edit {
 	@extend %o-note-edit;
 
 	&__form {
@@ -795,33 +841,11 @@ ul.c-brief-list {
 
 	&__done,
 	&__delete {
-		@extend %o-skeleton;
-		@extend %o-skeleton--button;
-		width: 8em;
-		height: 2.5em;
+		@include o-note-skeleton-button;
 	}
 
 	&__delete {
 		margin-inline: 12px 0;
-	}
-
-	&__note-title {
-		@extend %o-note__title;
-		@extend %o-skeleton;
-
-		height: 3rem;
-		width: 65%;
-		margin-inline: 12px 1em;
-	}
-
-	&__note-preview {
-		@extend %o-note__preview;
-		@include o-stack;
-
-		& div {
-			@extend %o-skeleton;
-			height: 1.5em;
-		}
 	}
 }
 

@@ -1,10 +1,15 @@
 // file: src/server/api.ts
 'use server';
-import { insertNote, selectNote, selectNotesInTitle, updateNote } from './repo';
+import {
+	deleteNote as deleteNoteById,
+	insertNote,
+	selectNote,
+	selectNotesInTitle,
+	updateNote,
+} from './repo';
 import { toNote, toNoteBrief, type NotePersist } from './types';
 import { excerptFrom } from './excerpt';
 
-/*
 const delay =
 	<T>(delayMs: number) =>
 	(value: T) => {
@@ -12,7 +17,6 @@ const delay =
 			setTimeout(resolve, delayMs, value);
 		});
 	};
-*/
 
 const toBriefs = (notes: NotePersist[]) => notes.map(toNoteBrief);
 
@@ -22,7 +26,8 @@ const getBriefs = (search: string | undefined) =>
 const toMaybeNote = (note: NotePersist | undefined) =>
 	note ? toNote(note) : undefined;
 
-const getNote = (id: string) => selectNote(id).then(toMaybeNote);
+const getNote = (id: string) =>
+	selectNote(id).then(toMaybeNote).then(delay(2000));
 
 function upsertNote(title: string, body: string, id?: string) {
 	const excerpt = excerptFrom(body);
@@ -33,4 +38,7 @@ function upsertNote(title: string, body: string, id?: string) {
 	).then(toMaybeNote);
 }
 
-export { getBriefs, getNote, upsertNote };
+const deleteNote = (noteId: string) =>
+	deleteNoteById(noteId).then((note) => note?.id === noteId);
+
+export { deleteNote, getBriefs, getNote, upsertNote };

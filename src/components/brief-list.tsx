@@ -95,10 +95,12 @@ export default function BriefList(props: Props) {
 			case 'delete': {
 				return NO_UPDATED_ID;
 			}
-			case 'update': {
+			case 'edit': {
 				return last[1];
 			}
 			case 'new': {
+				// IDs are server assigned so get it form the URL
+				// of the currently open note.
 				return typeof params.noteId === 'string' && params.noteId.length > 0
 					? params.noteId
 					: NO_UPDATED_ID;

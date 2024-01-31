@@ -12,7 +12,7 @@ import {
 	type ParentProps,
 } from 'solid-js';
 
-export type LastEdit = ['new'] | ['update', string] | ['delete', string];
+export type LastEdit = ['new'] | ['edit', string] | ['delete', string];
 
 // Primitives over features …
 const [lastEdit, sendLastEdit] = createSignal<LastEdit | undefined>(undefined, {
