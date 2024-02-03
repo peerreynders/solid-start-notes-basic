@@ -1,12 +1,7 @@
 // @refresh reload
 // file: src/app.tsx
 import { mergeProps, Suspense } from 'solid-js';
-import {
-	Route,
-	Router,
-	useSearchParams,
-	RouteSectionProps,
-} from '@solidjs/router';
+import { Route, Router, useSearchParams } from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
 import EditButton from './components/edit-button';
 import SearchField from './components/search-field';
@@ -20,6 +15,7 @@ import NotFound from './routes/not-found';
 import './styles/critical.scss';
 
 import type { ParentProps } from 'solid-js';
+import type { RouteSectionProps } from '@solidjs/router';
 import type { SearchParams } from './route-path';
 
 function Layout(props: ParentProps) {
