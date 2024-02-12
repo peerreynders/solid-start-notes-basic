@@ -9,7 +9,7 @@ import {
 } from './repo';
 import { toNote, toNoteBrief, type NotePersist } from './types';
 import { excerptFrom } from './excerpt';
-
+/*
 const delay =
 	<T>(delayMs: number) =>
 	(value: T) => {
@@ -17,7 +17,7 @@ const delay =
 			setTimeout(resolve, delayMs, value);
 		});
 	};
-
+*/
 const toBriefs = (notes: NotePersist[]) => notes.map(toNoteBrief);
 
 const getBriefs = (search: string | undefined) =>
@@ -26,8 +26,8 @@ const getBriefs = (search: string | undefined) =>
 const toMaybeNote = (note: NotePersist | undefined) =>
 	note ? toNote(note) : undefined;
 
-const getNote = (id: string) =>
-	selectNote(id).then(toMaybeNote).then(delay(2000));
+const getNote = (id: string) => selectNote(id).then(toMaybeNote);
+//	selectNote(id).then(toMaybeNote).then(delay(2000));
 
 function upsertNote(title: string, body: string, id?: string) {
 	const excerpt = excerptFrom(body);

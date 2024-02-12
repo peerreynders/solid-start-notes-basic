@@ -1,8 +1,7 @@
 // file: src/components/brief.tsx
 import { createUniqueId, onMount, Show } from 'solid-js';
 import { NoHydration } from 'solid-js/web';
-
-import type { BriefDateFormat } from '../types';
+import { localizeFormat, type FormatFn } from '../lib/date-time';
 
 type Props = {
 	noteId: string;
@@ -12,7 +11,7 @@ type Props = {
 	pending: boolean;
 	active: boolean;
 	flushed: boolean;
-	format: BriefDateFormat;
+	format: FormatFn;
 };
 
 const CLASSNAME_FLASH = 'js:c-brief--flash';
@@ -45,15 +44,7 @@ function Brief(props: Props) {
 		// if it deviates from the server generated one
 		// (a request may carry the locale but not the timezone)
 		// Also `ref` doesn't work on elements inside `NoHydration`
-		if (header instanceof HTMLElement) {
-			const time = header.querySelector('time');
-			if (time instanceof HTMLTimeElement) {
-				const epochTimestamp = Date.parse(time.dateTime);
-				const current = time.textContent;
-				const [local] = props.format(epochTimestamp);
-				if (current !== local) time.textContent = local;
-			}
-		}
+		localizeFormat(props.format, header);
 	});
 
 	return (

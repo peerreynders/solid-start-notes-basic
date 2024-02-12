@@ -8,6 +8,10 @@ const defaultOptionsBriefDateFormat: Intl.ResolvedDateTimeFormatOptions = {
 	hour12: false,
 };
 
+export type FormatFn = (
+	epochTimestamp: number
+) => [local: string, utcIso: string];
+
 function makeNoteDateFormat({
 	locale,
 	timeZone,
@@ -20,15 +24,11 @@ function makeNoteDateFormat({
 		timeStyle: 'short',
 	});
 
-	return function format(epochTimestamp: number) {
+	const format: FormatFn = function format(epochTimestamp: number) {
 		const dateTime = new Date(epochTimestamp);
-		// TS always infers arrays, not tuples
-		const result: [string, string] = [
-			display.format(dateTime),
-			dateTime.toISOString(),
-		];
-		return result;
+		return [display.format(dateTime), dateTime.toISOString()];
 	};
+	return format;
 }
 
 function makeBriefDateFormat({
@@ -64,4 +64,24 @@ function makeBriefDateFormat({
 	};
 }
 
-export { makeBriefDateFormat, makeNoteDateFormat };
+function localizeFormat(
+	format: FormatFn,
+	timeAncestor: HTMLElement | undefined
+): void {
+	if (!(timeAncestor instanceof HTMLElement))
+		throw new Error('Unsuitable ancestor element');
+
+	const time = timeAncestor.querySelector('time');
+	if (!(time instanceof HTMLTimeElement))
+		throw new Error('Unable to locate time element under specified ancestor');
+
+	const current = time.textContent;
+	if (!current) return;
+	// i.e. nothing to do (CSR waiting for async content)
+
+	const epochTimestamp = Date.parse(time.dateTime);
+	const [local] = format(epochTimestamp);
+	if (current !== local) time.textContent = local;
+}
+
+export { localizeFormat, makeBriefDateFormat, makeNoteDateFormat };

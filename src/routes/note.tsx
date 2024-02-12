@@ -1,11 +1,11 @@
 // file: src/routes/note.tsx
-import { Show, Suspense } from 'solid-js';
-import { NoHydration } from 'solid-js/web';
+import { onMount, Show, Suspense } from 'solid-js';
+import { isServer, NoHydration } from 'solid-js/web';
 import { createAsync, useNavigate } from '@solidjs/router';
 import { Title } from '@solidjs/meta';
-import { makeTitle } from '../route-path';
+import { hrefToHome, makeTitle } from '../route-path';
 import { getNote } from '../api';
-import { makeTransformOrNavigate } from './note-common';
+import { localizeFormat, makeNoteDateFormat } from '../lib/date-time';
 import {
 	NoteSkeletonDisplay,
 	NoteSkeletonEdit,
@@ -14,35 +14,74 @@ import NoteEdit from '../components/note-edit';
 import EditButton from '../components/edit-button';
 import NotePreview from '../components/note-preview';
 
-import type { RouteSectionProps } from '@solidjs/router';
+import type { Location, Navigator, RouteSectionProps } from '@solidjs/router';
+import type { Note } from '../types';
+
+const noteDateFormat = isServer
+	? makeNoteDateFormat()
+	: makeNoteDateFormat(Intl.DateTimeFormat().resolvedOptions());
+
+function makeTransformOrNavigate(
+	location: Location<unknown>,
+	navigate: Navigator
+) {
+	const toNoteExpanded = ({ id, title, body, updatedAt }: Note) => {
+		const [updated, updatedISO] = noteDateFormat(updatedAt);
+		return {
+			id,
+			title,
+			body,
+			updatedAt,
+			updatedISO,
+			updated,
+		};
+	};
+
+	return function transformOrNavigate(maybeNote: Note | undefined) {
+		if (maybeNote) return toNoteExpanded(maybeNote);
+
+		navigate(hrefToHome(location), { replace: true });
+	};
+}
 
 type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
-function NoteDisplay(props: { note: NoteExpanded }) {
+function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
+	// `noteId` is available immediately
+	// while `note` (containing `id`) needs async to fulfill first
+	const ofNote = (
+		propName: 'title' | 'body' | 'updated' | 'updatedISO',
+		defaultValue = ''
+	) => props.note?.[propName] ?? defaultValue;
+
+	let noteUpdated: HTMLElement | undefined;
+
+	onMount(() => {
+		// After hydration correct the display date/time
+		// if it deviates from the server generated one
+		// (a request may carry the locale but not the timezone)
+		// Also `ref` doesn't work on elements inside a `NoHydration` boundary
+		localizeFormat(noteDateFormat, noteUpdated);
+	});
+
 	return (
 		<Suspense fallback={<NoteSkeletonDisplay />}>
-			<Show when={props.note}>
-				{(note) => (
-					<>
-						<Title>{makeTitle(note().id)}</Title>
-						<div class="c-note">
-							<div class="c-note__header">
-								<h1>{note().title}</h1>
-								<div class="c-note__menu" role="menubar">
-									<small class="c-note__updated" role="status">
-										Last updated on{' '}
-										<NoHydration>
-											<time dateTime={note().updatedISO}>{note().updated}</time>
-										</NoHydration>
-									</small>
-									<EditButton kind={'edit'}>Edit</EditButton>
-								</div>
-							</div>
-							<NotePreview body={note().body} />
-						</div>
-					</>
-				)}
-			</Show>
+			<Title>{makeTitle(props.noteId)}</Title>
+			<div class="c-note">
+				<div class="c-note__header">
+					<h1>{ofNote('title')}</h1>
+					<div class="c-note__menu" role="menubar">
+						<small ref={noteUpdated} class="c-note__updated" role="status">
+							Last updated on{' '}
+							<NoHydration>
+								<time dateTime={ofNote('updatedISO')}>{ofNote('updated')}</time>
+							</NoHydration>
+						</small>
+						<EditButton kind={'edit'}>Edit</EditButton>
+					</div>
+				</div>
+				<NotePreview body={ofNote('body')} />
+			</div>
 		</Suspense>
 	);
 }
@@ -60,17 +99,16 @@ export default function Note(props: NoteProps) {
 	return (
 		<>
 			<Title>{makeTitle(isEdit() ? `Edit ${noteId()}` : noteId())}</Title>
-			<Show when={isEdit()} fallback={<NoteDisplay note={note()} />}>
+			<Show
+				when={isEdit()}
+				fallback={<NoteDisplay noteId={noteId()} note={note()} />}
+			>
 				<Suspense fallback={<NoteSkeletonEdit />}>
-					<Show when={note()}>
-						{(note) => (
-							<NoteEdit
-								noteId={note().id}
-								initialTitle={note().title}
-								initialBody={note().body}
-							/>
-						)}
-					</Show>
+					<NoteEdit
+						noteId={noteId()}
+						initialTitle={note()?.title}
+						initialBody={note()?.body}
+					/>
 				</Suspense>
 			</Show>
 		</>

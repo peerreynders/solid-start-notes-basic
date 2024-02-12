@@ -43,9 +43,7 @@ function Layout(props: ParentProps) {
 						<BriefList searchText={searchParams.search} />
 					</Suspense>
 				</section>
-				<section class="c-note-view c-main__column">
-					<Suspense>{props.children}</Suspense>
-				</section>
+				<section class="c-note-view c-main__column">{props.children}</section>
 			</main>
 		</MetaProvider>
 	);

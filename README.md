@@ -4,6 +4,10 @@
 
 — [Musing on HTML Partials](https://youtu.be/N-QwFFqI8aQ?t=12170)
 
+> … you don't have to have server components to have the same benefits that server components give …
+
+— [What Comes After GraphQL?](https://youtu.be/gfKrdN1RzoI?t=14516)
+
 Updated for SolidStart v0.5.2 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
 The app is a port of the December 2020 [React Server Components Demo](https://github.com/reactjs/server-components-demo) ([LICENSE](https://github.com/reactjs/server-components-demo/blob/main/LICENSE); [no pg fork](https://github.com/pomber/server-components-demo/), [Data Fetching with React Server Components](https://youtu.be/TQQPAU21ZUw)) but here it's just a basic client side routing implementation.
 It doesn't use a database but stores the notes via the [Unstorage Node.js Filesystem (Lite) driver](https://unstorage.unjs.io/drivers/fs#nodejs-filesystem-lite) . This app is not intended to be deployed but simply serves as an experimental platform.
@@ -199,16 +203,14 @@ function Layout(props: ParentProps) {
             <BriefList searchText={searchParams.search} />
           </Suspense>
         </section>
-        <section class="c-note-view c-main__column">
-          <Suspense>{props.children}</Suspense>
-        </section>
+        <section class="c-note-view c-main__column">{props.children}</section>
       </main>
     </MetaProvider>
   );
 }
 ```
 
-Note the [Suspense](https://docs.solidjs.com/references/api-reference/control-flow/Suspense) boundary around `BriefList` and `props.children`. This way content under the suspense boundary is not displayed until all asynchonous values under it have resolved; meanwhile the `fallback` is shown when specified.
+Note the [Suspense](https://docs.solidjs.com/references/api-reference/control-flow/Suspense) boundary around `BriefList`. This way content under the suspense boundary is not displayed until all asynchonous values under it have resolved; meanwhile the `fallback` is shown.
 
 ## Route Content (`Route` components)
 
@@ -273,5 +275,201 @@ export default function NoteNone() {
 
 ### `note-new`
 
+Initializes the `note-editor` to create a new note.
+
+```jsx
+// file: src/routes/note-new.tsx
+import { Title } from '@solidjs/meta';
+import { makeTitle } from '../route-path';
+import NoteEditor from '../components/note-edit';
+
+export default function NoteNew() {
+  return (
+    <>
+      <Title>{makeTitle('New Note')}</Title>
+      <NoteEditor
+        noteId={undefined}
+        initialTitle={'Untitled'}
+        initialBody={''}
+      />
+    </>
+  );
+}
+```
+
 ### `note`
 
+The `note` route component is used to display the selected note (`/notes/:noteid`) or to place the selected note in edit mode (`/notes/:noteId/edit`).
+
+In edit mode it simply uses the `note-edit` component, otherwise the internal `NoteDisplay` component is used.
+
+![The `NoteDisplay` component as it is used by the `note` route component](./docs/assets/note-display.jpg)
+
+Each presentation has it's own suspense boundary; while `getNote()` hasn't settled yet, `NoteDisplay` will show `NoteSkeletonDisplay` and the other `NoteSkeletonEdit` instead.
+However the secondary objective of suspense is to scaffold the *future* DOM tree concurrently with the resolving data.
+So both `NoteDisplay` and it's alternate have to be able to create the DOM tree for the data to be placed into later.
+
+That is why `NoteDisplay` is passed the seemingly redundant `noteId` separately; it is available **before** the `note` prop which will be initially `undefined`; similarly for `note-edit` the `noteId` prop is available immediately while both the `title` and `body` start out `undefined` to resolve later to their respective strings. 
+
+```jsx
+// file: src/routes/note.tsx
+import { onMount, Show, Suspense } from 'solid-js';
+import { isServer, NoHydration } from 'solid-js/web';
+import { createAsync, useNavigate } from '@solidjs/router';
+import { Title } from '@solidjs/meta';
+import { hrefToHome, makeTitle } from '../route-path';
+import { getNote } from '../api';
+import { localizeFormat, makeNoteDateFormat } from '../lib/date-time';
+import {
+  NoteSkeletonDisplay,
+  NoteSkeletonEdit,
+} from '../components/note-skeleton';
+import NoteEdit from '../components/note-edit';
+import EditButton from '../components/edit-button';
+import NotePreview from '../components/note-preview';
+
+import type { Location, Navigator, RouteSectionProps } from '@solidjs/router';
+import type { Note } from '../types';
+
+const noteDateFormat = isServer
+  ? makeNoteDateFormat()
+  : makeNoteDateFormat(Intl.DateTimeFormat().resolvedOptions());
+
+function makeTransformOrNavigate(
+  location: Location<unknown>,
+  navigate: Navigator
+) {
+  const toNoteExpanded = ({ id, title, body, updatedAt }: Note) => {
+    const [updated, updatedISO] = noteDateFormat(updatedAt);
+    return {
+      id,
+      title,
+      body,
+      updatedAt,
+      updatedISO,
+      updated,
+    };
+  };
+
+  return function transformOrNavigate(maybeNote: Note | undefined) {
+    if (maybeNote) return toNoteExpanded(maybeNote);
+
+    navigate(hrefToHome(location), { replace: true });
+  };
+}
+
+type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
+
+function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
+  // `noteId` is available immediately
+  // while `note` (containing `id`) needs async to fulfill first
+  const ofNote = (
+    propName: 'title' | 'body' | 'updated' | 'updatedISO',
+    defaultValue = ''
+  ) => props.note?.[propName] ?? defaultValue;
+
+  let noteUpdated: HTMLElement | undefined;
+
+  onMount(() => {
+    // After hydration correct the display date/time
+    // if it deviates from the server generated one
+    // (a request may carry the locale but not the timezone)
+    // Also `ref` doesn't work on elements inside a `NoHydration` boundary
+    localizeFormat(noteDateFormat, noteUpdated);
+  });
+
+  return (
+    <Suspense fallback={<NoteSkeletonDisplay />}>
+      <Title>{makeTitle(props.noteId)}</Title>
+      <div class="c-note">
+        <div class="c-note__header">
+          <h1>{ofNote('title')}</h1>
+          <div class="c-note__menu" role="menubar">
+            <small ref={noteUpdated} class="c-note__updated" role="status">
+              Last updated on{' '}
+              <NoHydration>
+                <time dateTime={ofNote('updatedISO')}>{ofNote('updated')}</time>
+              </NoHydration>
+            </small>
+            <EditButton kind={'edit'}>Edit</EditButton>
+          </div>
+        </div>
+        <NotePreview body={ofNote('body')} />
+      </div>
+    </Suspense>
+  );
+}
+
+export type NoteProps = RouteSectionProps & { edit: boolean };
+
+export default function Note(props: NoteProps) {
+  const isEdit = () => props.edit;
+  const noteId = () => props.params.noteId;
+  const navigate = useNavigate();
+  const transformOrNavigate = makeTransformOrNavigate(props.location, navigate);
+  const note = createAsync(() => getNote(noteId()).then(transformOrNavigate), {
+    deferStream: true,
+  });
+  return (
+    <>
+      <Title>{makeTitle(isEdit() ? `Edit ${noteId()}` : noteId())}</Title>
+      <Show
+        when={isEdit()}
+        fallback={<NoteDisplay noteId={noteId()} note={note()} />}
+      >
+        <Suspense fallback={<NoteSkeletonEdit />}>
+          <NoteEdit
+            noteId={noteId()}
+            initialTitle={note()?.title}
+            initialBody={note()?.body}
+          />
+        </Suspense>
+      </Show>
+    </>
+  );
+}
+```
+
+Another detail to note is the [`NoHydration`](https://www.solidjs.com/guides/server#hydration-script) boundary around the [`<time>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time) element. 
+The original demo is [overly simplistic](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/Note.js#L57) as it formats the date/time on the server side without giving any consideration to the client's locale.
+
+Granted, for an extended session it would be possible to capture the client's locale as part of the session/authentication information and use that information to correctly format the date on the server. 
+But given that any URL to one of the routes could be used for first load, the server really has no way of initially knowing the correct locale for the date/time as the initial request will not carry any locale information.
+
+All the server can do is initially format the date/time based on the server locale and then have a client script correct it. To this end a `<time>` element is used and the server places the full UTC time in the [`datetime`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time#datetime) attribute.
+
+```TypeScript
+// file: src/lib/date-time.ts
+// …
+export type FormatFn = (epochTimestamp: number) => [local: string, utcIso: string];
+// …
+
+function localizeFormat(
+  format: FormatFn,
+  timeAncestor: HTMLElement | undefined
+): void {
+  if (!(timeAncestor instanceof HTMLElement))
+    throw new Error('Unsuitable ancestor element');
+
+  const time = timeAncestor.querySelector('time');
+  if (!(time instanceof HTMLTimeElement))
+    throw new Error('Unable to locate time element under specified ancestor');
+
+  const epochTimestamp = Date.parse(time.dateTime);
+  const current = time.textContent;
+  const [local] = format(epochTimestamp);
+  if (current !== local) time.textContent = local;
+}
+
+export { localizeFormat, makeBriefDateFormat, makeNoteDateFormat };
+```
+
+When the `NoteDisplay` component is mounted on the client DOM [`onMount`](https://docs.solidjs.com/references/api-reference/lifecycles/onMount) applies `localizeFormat` to acquire the `<time>` element, re-run the (localized) format and replacing the element's [`textContent`](https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent) if necessary. 
+
+Side note: [`ref`](https://docs.solidjs.com/references/api-reference/special-jsx-attributes/ref)s cannot exist inside a `NoHydration` boundary; this makes it necessary to place the `ref` on a hydrated ancestor element and use the DOM API to acquire any elements within the `NoHydration` boundary.
+
+`transformOrNavigate()` does one of two things based on its `maybeNote` input:
+- if `getNote()` resolves to a `Note` an expanded note (with formatted `updated` (local) and `updatedISO` (UTC, full ISO format) strings) is returned for use by the component JSX.
+- otherwise the `:noteId` is assumed to be invalid which triggers an immediate navigation to the home route, removing the faulty URL from [`history`](https://developer.mozilla.org/en-US/docs/Web/API/Window/history). 
+
+## Components

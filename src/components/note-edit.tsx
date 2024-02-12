@@ -10,8 +10,8 @@ import type { EditIntent } from '../types';
 
 type Props = {
 	noteId: string | undefined;
-	initialTitle: string;
-	initialBody: string;
+	initialTitle: string | undefined;
+	initialBody: string | undefined;
 };
 
 const maybeNoteId = (maybe: string | undefined) =>
@@ -24,7 +24,13 @@ export default function NoteEdit(props: Props) {
 	);
 	const [busy, setBusy] = createSignal(false);
 
-	const [title, setTitle] = createSignal(props.initialTitle);
+	const [editedTitle, setTitle] = createSignal(props.initialTitle);
+	const title = () => {
+		const title = editedTitle();
+		// follow reactive prop in case initially undefined
+		return title !== undefined ? title : props.initialTitle ?? '';
+	};
+
 	const titleListener = (
 		e: InputEvent & {
 			currentTarget: HTMLInputElement;
@@ -35,7 +41,13 @@ export default function NoteEdit(props: Props) {
 		setTitle(e.currentTarget.value);
 	};
 
-	const [body, setBody] = createSignal(props.initialBody);
+	const [updatedBody, setBody] = createSignal(props.initialBody);
+	const body = () => {
+		const body = updatedBody();
+		// follow reactive prop in case initially undefined
+		return body !== undefined ? body : props.initialBody ?? '';
+	};
+
 	const bodyListener = (
 		e: InputEvent & {
 			currentTarget: HTMLTextAreaElement;
