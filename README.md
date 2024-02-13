@@ -455,8 +455,11 @@ function localizeFormat(
   if (!(time instanceof HTMLTimeElement))
     throw new Error('Unable to locate time element under specified ancestor');
 
-  const epochTimestamp = Date.parse(time.dateTime);
   const current = time.textContent;
+  if (!current) return;
+  // i.e. nothing to do (CSR waiting for async content)
+
+  const epochTimestamp = Date.parse(time.dateTime);
   const [local] = format(epochTimestamp);
   if (current !== local) time.textContent = local;
 }
@@ -473,3 +476,110 @@ Side note: [`ref`](https://docs.solidjs.com/references/api-reference/special-jsx
 - otherwise the `:noteId` is assumed to be invalid which triggers an immediate navigation to the home route, removing the faulty URL from [`history`](https://developer.mozilla.org/en-US/docs/Web/API/Window/history). 
 
 ## Components
+
+### spinner
+
+Just a `<div>` with a CSS based spinner animation which maps the `active` prop to a [modifier](https://getbem.com/naming/#modifier) to control the animation (original [Spinner.js](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/Spinner.js)).
+
+```jsx
+// file: src/components/spinner.tsx
+export type Props = {
+  active: boolean;
+};
+
+export default function Spinner(props: Props) {
+  return (
+    <div
+      class={'c-spinner' + (props.active ? ' c-spinner--active' : '')}
+      role="progressbar"
+      aria-busy={props.active}
+    />
+  );
+}
+```
+
+### search-field
+
+(Original client component [SearchField.js](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SearchField.js)).
+The purpose of `search-field` is to propagate the input search text to the route URL which consequently triggers all the activities associated with that navigation.
+What is interesting in the original is the use of [`useTransition`](https://react.dev/reference/react/useTransition):
+- the `isPending` value indicates that the triggered activities haven't completed yet.
+- `startTransition` marks all state updates triggered synchronously by the passed `scope` function as part of the “transistion”. More importantly calling `startTransition` before the previous invocation completes [*interrupts*](https://react.dev/reference/react/useTransition#starttransition-caveats) the previous transition in favour of the more recent one.
+
+So:
+- `isPending` controls the “busy” spinner
+- Each [`input`](https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event) event starts a new transition potentially discarding any render work that may have been started on behalf a previous transition.
+
+> [!NOTE]
+> SolidJS [`useTransition`](https://docs.solidjs.com/reference/reactive-utilities/use-transition) is subtly different. 
+> Most importantly a later transition doesn't interupt the previous one.
+>
+> Presumably React uses some internal state API to track/control the transition.
+> SolidJS on the other hand tracks the async updates under the suspense boundary triggered by the `scope` function to determine when the transition has completed.
+> Once the transition completes, everything is ready to synchronously batch update the reactive graph which will then propagate changes to the visible DOM as required.
+>
+> From the *user POV* this means that the visible DOM isn't changed (and is still interactive) while the transition is in progess but the `pending` signal is typically used to alter the UI in some way to indicate that *something* is happening.
+
+
+```jsx
+// file: src/components/search-field.tsx
+import { createUniqueId } from 'solid-js';
+import { useIsRouting, useSearchParams } from '@solidjs/router';
+import { debounce } from '../lib/debounce';
+import Spinner from './spinner';
+
+import type { SearchParams } from '../route-path';
+
+function updateParams(set: (params: Partial<SearchParams>) => void) {
+  const setParams = debounce<[Partial<SearchParams>]>(set, 250);
+
+  return (
+    event: InputEvent & {
+      currentTarget: HTMLInputElement;
+      target: HTMLInputElement;
+    }
+  ) => {
+    setParams({ search: event.currentTarget.value });
+    event.preventDefault();
+  };
+}
+
+const preventSubmit = (
+  event: Event & { submitter: HTMLElement } & {
+    currentTarget: HTMLFormElement;
+    target: Element;
+  }
+) => event.preventDefault();
+
+export default function SearchField() {
+  const searchInputId = createUniqueId();
+  const isRouting = useIsRouting();
+  const [searchParams, setSearchParams] = useSearchParams<SearchParams>();
+  const updateSearch = updateParams(setSearchParams);
+
+  return (
+    <form class="c-search-field" role="search" onSubmit={preventSubmit}>
+      <label class="u-offscreen" for={searchInputId}>
+        Search for a note by title
+      </label>
+      <input
+        id={searchInputId}
+        placeholder="Search"
+        value={searchParams.search ?? ''}
+        onInput={updateSearch}
+      />
+      <Spinner active={isRouting()} />
+    </form>
+  );
+}
+```
+
+In solid-start (with [solid-router](https://github.com/solidjs/solid-router)) the transition is managed by the router.
+It provides [`useIsRouting()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#useisrouting) which exposes the signal needed to activate the spinner.
+The advantage of this approach is that is that the spinner activates whenever there is a route change, not just when the `search-field` is responsible for the route change.
+
+To minimize frequent, intermediate route changes the input event listener is *debounced* (shamelessly lifted from [solid-primitives](https://github.com/solidjs-community/solid-primitives/blob/70b09201f951ebccf0c932e65c5a957f269e2686/packages/scheduled/src/index.ts#L32-L44)) to delay the route change until there hasn't been a new input for 250ms.
+
+[`useSearchParams()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#usesearchparams) exposes access to the route's [query string](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL#parameters) making it possible to initialize `search-field` from the URL but also granting it the capability to update the route URL and thereby to initiate a route change.
+
+[`createUniqueId()`](https://docs.solidjs.com/reference/component-apis/create-unique-id) is used to create a unique ID to correlate the [`<label>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/label#for) to the [`<input>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#id).

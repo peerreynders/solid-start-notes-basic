@@ -48,7 +48,10 @@ function makeBriefDateFormat({
 	});
 	let today = new Date();
 
-	return function format(epochTimestamp: number, resetToday = false) {
+	const format: FormatFn = function format(
+		epochTimestamp: number,
+		resetToday = false
+	) {
 		if (resetToday) today = new Date();
 
 		const dateTime = new Date(epochTimestamp);
@@ -58,10 +61,11 @@ function makeBriefDateFormat({
 			dateTime.getFullYear() === today.getFullYear()
 				? timeOnly.format(dateTime)
 				: dateOnly.format(dateTime);
-		// TS always infers arrays, not tuples
-		const result: [string, string] = [display, dateTime.toISOString()];
-		return result;
+
+		return [display, dateTime.toISOString()];
 	};
+
+	return format;
 }
 
 function localizeFormat(
