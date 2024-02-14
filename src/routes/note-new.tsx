@@ -1,7 +1,7 @@
 // file: src/routes/note-new.tsx
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
-import NoteEdit from '../components/note-edit';
+import { NoteEdit } from '../components/note-edit';
 
 export default function NoteNew() {
 	return (

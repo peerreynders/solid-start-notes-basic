@@ -26,7 +26,7 @@ The original's demo routing is managed by inside a single context ([`route.js`](
     - `searchText`
 
 This “triple” is used as a key to cache server content for that `location`.
-The `location` is exposed in the URL as the [encoded URI component](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent) value of the `location` [search parameter](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams); i.e.:
+The `location` is exposed in the URL as the [encoded URI component](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent) value of the `location` [search parameter](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams); e.g.:
 
 ```TypeScript
 const location = { selectedId: 2, isEditing: false, searchText: '' };
@@ -164,7 +164,7 @@ The orignal demo's layout is found in [`App.js`](https://github.com/reactjs/serv
 - `note-none.tsx` appears initially within `children`.
 - `not-found.tsx` appears within `children` for malformed URLs. 
 
-```TypeScript
+```tsx
 // file: src/app.tsx
 // …
 import { Route, Router, useSearchParams } from '@solidjs/router';
@@ -236,7 +236,7 @@ import { makeTitle } from '../route-path';
 
 export default function NotFound() {
   return (
-    <>
+    <div class="c-not-found">
       <Title>{makeTitle('Not Found')}</Title>
       <HttpStatusCode code={404} />
       <h1>Page Not Found</h1>
@@ -247,7 +247,7 @@ export default function NotFound() {
         </a>{' '}
         to learn how to build SolidStart apps.
       </p>
-    </>
+    </div>
   );
 }
 ```
@@ -256,7 +256,7 @@ export default function NotFound() {
 
 Placeholder content until a `:noteId` is selected.
 
-```jsx
+```tsx
 // file: src/routes/note-none.tsx
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
@@ -277,7 +277,7 @@ export default function NoteNone() {
 
 Initializes the `note-editor` to create a new note.
 
-```jsx
+```tsx
 // file: src/routes/note-new.tsx
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
@@ -311,7 +311,7 @@ So both `NoteDisplay` and it's alternate have to be able to create the DOM tree 
 
 That is why `NoteDisplay` is passed the seemingly redundant `noteId` separately; it is available **before** the `note` prop which will be initially `undefined`; similarly for `note-edit` the `noteId` prop is available immediately while both the `title` and `body` start out `undefined` to resolve later to their respective strings. 
 
-```jsx
+```tsx
 // file: src/routes/note.tsx
 import { onMount, Show, Suspense } from 'solid-js';
 import { isServer, NoHydration } from 'solid-js/web';
@@ -320,13 +320,9 @@ import { Title } from '@solidjs/meta';
 import { hrefToHome, makeTitle } from '../route-path';
 import { getNote } from '../api';
 import { localizeFormat, makeNoteDateFormat } from '../lib/date-time';
-import {
-  NoteSkeletonDisplay,
-  NoteSkeletonEdit,
-} from '../components/note-skeleton';
-import NoteEdit from '../components/note-edit';
-import EditButton from '../components/edit-button';
-import NotePreview from '../components/note-preview';
+import { NoteEdit, NoteEditSkeleton } from '../components/note-edit';
+import { EditButton } from '../components/edit-button';
+import { NotePreview, NotePreviewSkeleton } from '../components/note-preview';
 
 import type { Location, Navigator, RouteSectionProps } from '@solidjs/router';
 import type { Note } from '../types';
@@ -358,6 +354,16 @@ function makeTransformOrNavigate(
   };
 }
 
+const NoteDisplaySkeleton = () => (
+  <div class="c-note-skeleton-display" role="progressbar" aria-busy="true">
+    <div class="c-note-skeleton-display__header">
+      <div class="c-note-skeleton-title" />
+      <div class="c-note-skeleton-display__done" />
+    </div>
+    <NotePreviewSkeleton />
+  </div>
+);
+
 type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
 function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
@@ -379,7 +385,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
   });
 
   return (
-    <Suspense fallback={<NoteSkeletonDisplay />}>
+    <Suspense fallback={<NoteDisplaySkeleton />}>
       <Title>{makeTitle(props.noteId)}</Title>
       <div class="c-note">
         <div class="c-note__header">
@@ -391,7 +397,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
                 <time dateTime={ofNote('updatedISO')}>{ofNote('updated')}</time>
               </NoHydration>
             </small>
-            <EditButton kind={'edit'}>Edit</EditButton>
+            <EditButton kind={'update'}>Edit</EditButton>
           </div>
         </div>
         <NotePreview body={ofNote('body')} />
@@ -417,7 +423,7 @@ export default function Note(props: NoteProps) {
         when={isEdit()}
         fallback={<NoteDisplay noteId={noteId()} note={note()} />}
       >
-        <Suspense fallback={<NoteSkeletonEdit />}>
+        <Suspense fallback={<NoteEditSkeleton />}>
           <NoteEdit
             noteId={noteId()}
             initialTitle={note()?.title}
@@ -481,7 +487,7 @@ Side note: [`ref`](https://docs.solidjs.com/references/api-reference/special-jsx
 
 Just a `<div>` with a CSS based spinner animation which maps the `active` prop to a [modifier](https://getbem.com/naming/#modifier) to control the animation (original [Spinner.js](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/Spinner.js)).
 
-```jsx
+```tsx
 // file: src/components/spinner.tsx
 export type Props = {
   active: boolean;
@@ -521,7 +527,7 @@ So:
 > From the *user POV* this means that the visible DOM isn't changed (and is still interactive) while the transition is in progess but the `pending` signal is typically used to alter the UI in some way to indicate that *something* is happening.
 
 
-```jsx
+```tsx
 // file: src/components/search-field.tsx
 import { createUniqueId } from 'solid-js';
 import { useIsRouting, useSearchParams } from '@solidjs/router';
@@ -583,3 +589,64 @@ To minimize frequent, intermediate route changes the input event listener is *de
 [`useSearchParams()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#usesearchparams) exposes access to the route's [query string](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL#parameters) making it possible to initialize `search-field` from the URL but also granting it the capability to update the route URL and thereby to initiate a route change.
 
 [`createUniqueId()`](https://docs.solidjs.com/reference/component-apis/create-unique-id) is used to create a unique ID to correlate the [`<label>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/label#for) to the [`<input>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#id).
+
+### edit-button
+
+(Original client component [`EditButton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/EditButton.js))
+
+> [!NOTE]
+> [Again](#search-field) the original component wraps its navigation in a [transition](https://react.dev/reference/react/useTransition)—with `solid-start`/`solid-router` that responsibility becomes part of the router's navigation functionality.
+
+The `kind` prop determines whether the button navigates to the [update note route](#note) or the [new note route](#note-new). [`useLocation()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#uselocation) provides access to the currrent URL which is used as the basis to generate the URL to navigate to.
+Navigation is accessed through [`useNavigate()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#usenavigate).
+
+```TypeScript
+// file: src/components/edit-button.tsx
+import { useLocation, useNavigate } from '@solidjs/router';
+import { hrefToNoteUpdate, hrefToNoteNew } from '../route-path';
+
+import type { ParentProps } from 'solid-js';
+
+type Props = ParentProps & {
+  kind: 'update' | 'new';
+};
+
+const classList = (kind: Props['kind']) =>
+  'c-edit-button' +
+  (kind === 'new' ? ' js:c-edit-button--new' : ' js:c-edit-button--update');
+
+function EditButton(props: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const toHref = props.kind === 'new' ? hrefToNoteNew : hrefToNoteUpdate;
+
+  return (
+    <button
+      class={classList(props.kind)}
+      onClick={() => navigate(toHref(location))}
+      disabled={false}
+    >
+      {props.children}
+    </button>
+  );
+}
+
+export { EditButton };
+```
+
+### brief-list
+
+(Original server component [`NoteList.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteList.js), component [`SidebarNote.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNote.js), client component [`SidebarNoteContent.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js))
+
+Disecting the original:
+- `NoteList` is a server component; it accesses the database directly.
+If the `searchText` doesn't yield any results, it simply renders the `ReactNodes` for the empty list.
+If there are results the generated `ReactNodes` are a mixture of intrinsic `<ul>`, `<li>` and `ReactElements` carrying a `note` prop for a `SidebarNote` component.
+- `SidebarNote` isn't marked with `"use client"` implying it will run as a server component; this could be problematic if date/time formatting *should actually* be done on the client side to display values consistent with the client locale.
+As given, date/times will always be formatted with the server locale.
+`SidebarNote` transforms the `note` prop to `children`, `id`, `title` and `expandedChildren` props for `SidebarNoteContent`.
+- `SidebarNoteContent` is the client component that (client side) generates the intrinsic `ReactElement`s based on the props sent from the server.
+Clicking the content initiates navigation (wrapped in a [transition](https://react.dev/reference/react/useTransition)) to the full note preview.
+Whenever the `title` changes between re-renders, an effect triggers a CSS animation by adding a `flash` class.
+Component state tracks the expansion status of the content; clicking the toggle `<button>` expands and collapses the `expandedChildren` prop which contains the rendered note excerpt/summary.
+- [`NoteListSkeleton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteListSkeleton.js) serves as the fallback for the [suspense boundary](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/App.js#L38) around `NoteList`.

@@ -505,7 +505,9 @@ body {
 	cursor: pointer;
 	font-weight: 700;
 	outline-style: none;
+}
 
+.js\:c-edit-button {
 	&--new {
 		background: var(--primary-blue);
 		color: var(--white);
@@ -522,7 +524,7 @@ body {
 		}
 	}
 
-	&--modify {
+	&--update {
 		background: var(--white);
 		color: var(--primary-blue);
 		border: 1px solid var(--primary-blue);

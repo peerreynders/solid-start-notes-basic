@@ -52,7 +52,7 @@ type Props = {
 	searchText: string | undefined;
 };
 
-export default function BriefList(props: Props) {
+function BriefList(props: Props) {
 	const params = useParams();
 	const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
 
@@ -159,3 +159,21 @@ export default function BriefList(props: Props) {
 		</nav>
 	);
 }
+
+function BriefListSkeleton() {
+	return (
+		<ul class="c-brief-list-skeleton">
+			<li>
+				<div class="c-brief-list-skeleton__brief" />
+			</li>
+			<li>
+				<div class="c-brief-list-skeleton__brief" />
+			</li>
+			<li>
+				<div class="c-brief-list-skeleton__brief" />
+			</li>
+		</ul>
+	);
+}
+
+export { BriefList, BriefListSkeleton };

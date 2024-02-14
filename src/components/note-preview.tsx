@@ -9,13 +9,23 @@ type Props = {
 
 const mdToHtml = isServer ? server : client;
 
-export default function NotePreview(props: Props) {
-	return (
-		<div class="c-note-preview">
-			<div
-				class="o-from-markdown"
-				innerHTML={props.body ? mdToHtml(props.body) : ''}
-			/>
-		</div>
-	);
-}
+const NotePreview = (props: Props) => (
+	<div class="c-note-preview">
+		<div
+			class="o-from-markdown"
+			innerHTML={props.body ? mdToHtml(props.body) : ''}
+		/>
+	</div>
+);
+
+const NotePreviewSkeleton = () => (
+	<div class="c-note-skeleton-preview">
+		<div />
+		<div />
+		<div />
+		<div />
+		<div />
+	</div>
+);
+
+export { NotePreview, NotePreviewSkeleton };

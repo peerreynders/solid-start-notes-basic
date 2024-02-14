@@ -3,10 +3,9 @@
 import { mergeProps, Suspense } from 'solid-js';
 import { Route, Router, useSearchParams } from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
-import EditButton from './components/edit-button';
+import { EditButton } from './components/edit-button';
 import SearchField from './components/search-field';
-import BriefList from './components/brief-list';
-import BriefListSkeleton from './components/brief-list-skeleton';
+import { BriefList, BriefListSkeleton } from './components/brief-list';
 import Note from './routes/note';
 import NoteNew from './routes/note-new';
 import NoteNone from './routes/note-none';

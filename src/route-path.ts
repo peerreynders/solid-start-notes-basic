@@ -40,7 +40,7 @@ const rootpathToHome = (search = '') => homePathname + search;
 const rootpathWithNote = (noteId: string, search = '') =>
 	notePathname(noteId) + search;
 
-function hrefToNoteEdit(current: Location<unknown>) {
+function hrefToNoteUpdate(current: Location<unknown>) {
 	const noteId = extractNoteId(location.pathname);
 	if (noteId.length < 1)
 		throw new Error('Pathname was expected to contain a note ID');
@@ -64,8 +64,8 @@ const makeTitle = (title?: string) =>
 
 export {
 	hrefToHome,
-	hrefToNoteEdit,
 	hrefToNoteNew,
+	hrefToNoteUpdate,
 	hrefWithNote,
 	makeTitle,
 	rootpathToHome,

@@ -5,7 +5,7 @@ import { makeTitle } from '../route-path';
 
 export default function NotFound() {
 	return (
-		<>
+		<div class='c-not-found'>
 			<Title>{makeTitle('Not Found')}</Title>
 			<HttpStatusCode code={404} />
 			<h1>Page Not Found</h1>
@@ -16,6 +16,6 @@ export default function NotFound() {
 				</a>{' '}
 				to learn how to build SolidStart apps.
 			</p>
-		</>
+		</div>
 	);
 }
