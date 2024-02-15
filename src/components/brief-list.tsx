@@ -48,6 +48,20 @@ function briefDateFormat() {
 	}
 }
 
+function setupBriefStore(currentSearch: () => string | undefined) {
+	// Combining createAsync with Store. Inspired by:
+	// https://github.com/solidjs/solid-realworld/blob/f6e77ecd652bf32f0dc9238f291313fd1af7e98b/src/store/createComments.js#L4-L8
+	const [briefStore, setBriefs] = createStore<NoteBrief[]>([]);
+	return [
+		async function updateBriefStore() {
+			const next = await getBriefs(currentSearch());
+			setBriefs(reconcile(next));
+			return briefStore;
+		},
+		{ initialValue: briefStore },
+	] as const;
+}
+
 type Props = {
 	searchText: string | undefined;
 };
@@ -110,19 +124,8 @@ function BriefList(props: Props) {
 		}
 	});
 
-	// Combining async with Store. See:cc
-	// https://github.com/solidjs/solid-realworld/blob/f6e77ecd652bf32f0dc9238f291313fd1af7e98b/src/store/createComments.js#L4-L8
 	// Note: briefs is a signal carrying a finer grained store
-	const initialValue: NoteBrief[] = [];
-	const [briefsStore, setBriefs] = createStore(initialValue);
-	const briefs = createAsync(
-		async () => {
-			const next = await getBriefs(props.searchText);
-			setBriefs(reconcile(next));
-			return briefsStore;
-		},
-		{ initialValue }
-	);
+	const briefs = createAsync(...setupBriefStore(() => props.searchText));
 
 	const format = briefDateFormat();
 	let root: HTMLElement | undefined;

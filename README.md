@@ -8,7 +8,7 @@
 
 — [What Comes After GraphQL?](https://youtu.be/gfKrdN1RzoI?t=14516)
 
-Updated for SolidStart v0.5.2 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
+Updated for SolidStart v0.5.7 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
 The app is a port of the December 2020 [React Server Components Demo](https://github.com/reactjs/server-components-demo) ([LICENSE](https://github.com/reactjs/server-components-demo/blob/main/LICENSE); [no pg fork](https://github.com/pomber/server-components-demo/), [Data Fetching with React Server Components](https://youtu.be/TQQPAU21ZUw)) but here it's just a basic client side routing implementation.
 It doesn't use a database but stores the notes via the [Unstorage Node.js Filesystem (Lite) driver](https://unstorage.unjs.io/drivers/fs#nodejs-filesystem-lite) . This app is not intended to be deployed but simply serves as an experimental platform.
 
@@ -634,6 +634,73 @@ function EditButton(props: Props) {
 export { EditButton };
 ```
 
+### app-context
+
+(Related client component: [`SidebarNoteContent.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js))
+
+The `SidebarNoteContent` component in the orignal demo triggers a “flash” animation when it detects the [title changing between two renders](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js#L28-L33). 
+
+In this implementation the intent was reinterpreted to mean: “flash” when an action saves the `Note` to the server. 
+
+The `app-context` manages a central `lastEdit` signal that allows the consumer of the `SendLastEditHolder` type (`useSendLastEdit()`) to broadcast a `LastEdit` value to the consumers of the `LastEditHolder` type (`useLastEdit()`). 
+
+```TypeScript
+// file: src/components/app-context.tsx
+
+// NOTE: Core state is **represented** via the route
+// while the application context is the hub for
+// ephemeral (extended) state.
+// Ephemeral state isn't relevant to SSR.
+
+import {
+  createContext,
+  createSignal,
+  useContext,
+  type ParentProps,
+} from 'solid-js';
+
+export type LastEdit = ['new'] | ['edit', string] | ['delete', string];
+
+// Primitives over features …
+const [lastEdit, sendLastEdit] = createSignal<LastEdit | undefined>(undefined, {
+  equals: false,
+});
+
+export type LastEditHolder = {
+  lastEdit: typeof lastEdit;
+};
+export type SendLastEditHolder = {
+  sendLastEdit: typeof sendLastEdit;
+};
+
+const context = {
+  lastEdit,
+  sendLastEdit,
+};
+
+const AppContext = createContext(context);
+
+const AppProvider = (props: ParentProps) => (
+  <AppContext.Provider value={context}>{props.children}</AppContext.Provider>
+);
+
+function useAppContext() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('AppContext not initialized');
+
+  return ctx;
+}
+
+const useLastEdit = (): LastEditHolder => useAppContext();
+
+const useSendLastEdit = (): SendLastEditHolder => useAppContext();
+
+export { AppProvider, useLastEdit, useSendLastEdit };
+```
+
+> [!NOTE] 
+> Both `useLastEdit` and `useSendLastEdit` leverage a peculiarity of TypeScript (i.e. defined return types are not subject to [excess property checks](https://www.typescriptlang.org/docs/handbook/2/objects.html#excess-property-checks)); both have exactly the same runtime return type but in each case the defined return type is used to partially mask out “excess” properties at analysis time. There is nothing stopping runtime access but TypeScript will flag access of the “excess” properties at analysis time. 
+
 ### brief-list
 
 (Original server component [`NoteList.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteList.js), component [`SidebarNote.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNote.js), client component [`SidebarNoteContent.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js))
@@ -641,7 +708,7 @@ export { EditButton };
 Disecting the original:
 - `NoteList` is a server component; it accesses the database directly.
 If the `searchText` doesn't yield any results, it simply renders the `ReactNodes` for the empty list.
-If there are results the generated `ReactNodes` are a mixture of intrinsic `<ul>`, `<li>` and `ReactElements` carrying a `note` prop for a `SidebarNote` component.
+If there are results the generated `ReactNodes` are a mixture of intrinsic `<ul>`, `<li>` and `ReactElements` carrying a `note` prop for a `SidebarNote` component. 
 - `SidebarNote` isn't marked with `"use client"` implying it will run as a server component; this could be problematic if date/time formatting *should actually* be done on the client side to display values consistent with the client locale.
 As given, date/times will always be formatted with the server locale.
 `SidebarNote` transforms the `note` prop to `children`, `id`, `title` and `expandedChildren` props for `SidebarNoteContent`.
@@ -650,3 +717,293 @@ Clicking the content initiates navigation (wrapped in a [transition](https://rea
 Whenever the `title` changes between re-renders, an effect triggers a CSS animation by adding a `flash` class.
 Component state tracks the expansion status of the content; clicking the toggle `<button>` expands and collapses the `expandedChildren` prop which contains the rendered note excerpt/summary.
 - [`NoteListSkeleton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteListSkeleton.js) serves as the fallback for the [suspense boundary](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/App.js#L38) around `NoteList`.
+
+Within `brief-list` the exclusive server side functionality is accessed via `getBriefs`:
+
+```TypeScript
+// file: src/components/brief-list.tsx
+// …
+import { getBriefs } from '../api';
+// …
+```
+
+```TypeScript
+// file: src/api.ts
+import { action, cache, redirect, revalidate } from '@solidjs/router';
+// …
+import {
+  deleteNote as deleteNt,
+  getBriefs as getBf,
+  getNote as getNt,
+  upsertNote as upsertNt,
+} from './server/api';
+// …
+import type { NoteBrief, Note } from './types';
+// …
+const NAME_GET_BRIEFS = 'briefs';
+// …
+const getBriefs = cache<
+  (search: string | undefined) => Promise<NoteBrief[]>,
+  Promise<NoteBrief[]>
+>(async (search: string | undefined) => getBf(search), NAME_GET_BRIEFS);
+
+// …
+```
+
+> [!IMPORTANT]
+> `src/api.ts` only contains code that runs on the client. It's only the imports from `src/server/api.ts` that are accessed remotely.
+
+The code that runs on the server: 
+
+```TypeScript
+// file: src/server/api.ts
+'use server';
+
+import {
+  deleteNote as deleteNoteById,
+  insertNote,
+  selectNote,
+  selectNotesInTitle,
+  updateNote,
+} from './repo';
+import { toNote, toNoteBrief, type NotePersist } from './types';
+// …
+const toBriefs = (notes: NotePersist[]) => notes.map(toNoteBrief);
+
+const getBriefs = (search: string | undefined) =>
+  selectNotesInTitle(search).then(toBriefs);
+
+// …
+```
+
+The [`'use server'`](https://start.solidjs.com/api/server) directive instructs the bundler to establish a serialization boundary around the code that allows remote access by client functionality. It is recommended to use the directive at a function scope; here it is used at a module scope as all the functionality in this module exists to back the client side `src/api.ts` module.
+
+All the remaining code is client side code *which will be **server rendered** on first load*. However without island routing (still experimental) all the rendering JavaScript is still downloaded to the client which SolidJS largely mitigates by ***always*** prioritizing small client side bundles.
+
+```tsx
+// file: src/components/brief-list.tsx
+// …
+
+type Props = {
+  searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+
+  // … some assembly required …
+  // …
+
+  return (
+    <nav ref={root}>
+      <Show
+        when={briefs().length}
+        fallback={<EmptyContent search={props.searchText} />}
+      >
+        <ul class="c-brief-list">
+          <For each={briefs()}>
+            {(brief: NoteBrief) => (
+              <li>
+                <Brief
+                  noteId={brief.id}
+                  title={brief.title}
+                  summary={brief.summary}
+                  updatedAt={brief.updatedAt}
+                  active={activeId() === brief.id}
+                  pending={false}
+                  flushed={updatedId() === brief.id}
+                  format={format}
+                />
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </nav>
+  );
+}
+```
+
+From a rendering perspective `BriefList` simply creates an unordered list of `Brief`s. The store accessed through the `briefs` accessor drives the the updates: 
+
+```TypeScript
+// file: src/components/brief-list.tsx
+// …
+
+function setupBriefStore(currentSearch: () => string | undefined) {
+  const [briefStore, setBriefs] = createStore<NoteBrief[]>([]);
+  return [
+    async function updateBriefStore() {
+      const next = await getBriefs(currentSearch());
+      setBriefs(reconcile(next));
+      return briefStore;
+    },
+    { initialValue: briefStore },
+  ] as const;
+}
+
+type Props = {
+  searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+  // … 
+  // Note: briefs is a signal carrying a finer grained store
+  const briefs = createAsync(...setupBriefStore(() => props.searchText));
+
+  // …
+}
+```
+
+[`createAsync()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#createasync) creates a asynchronous-to-synchronous value boundary which is necessary to effectively use a [`cache()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#cache) wrapped asynchrounous remote accessor. 
+
+`createAsync()` only returns a (signal) accessor but given that updates occur by “remote list” lacking any referential stability the use of a [store](https://docs.solidjs.com/reference/stores/using-stores#createstore) in combination with [`reconcile`](https://docs.solidjs.com/reference/stores/store-utilities#reconcile) is indicated.
+
+Fortunately there is a tactic to deal with this apparent [impedance mismatch](https://agiledata.org/essays/impedancemismatch.html); return the store from the function being wrapped by `createAsync()`. 
+Meanwhile in the wrapped async function *reconcile* the store with the most recent “remote list” while always returning the reference to the now up-to-date and referentially stable store.
+
+When the store contains no `NoteBrief`s, `EmptyContent` is shown.
+
+```tsx
+// file: src/components/brief-list.tsx
+// …
+
+const EmptyContent = (props: { search: string | undefined }) => (
+  <div class="c-brief-empty">
+    {props.search
+      ? `Couldn't find any notes titled "${props.search}"`
+      : 'No notes created yet!'}{' '}
+  </div>
+);
+
+// …
+```
+
+The details of each `NoteBrief` render is delegated to the `Brief` component, however three additional props are passed: `active`, `flushed`, and `format`.
+
+`format` is created on the `brief-list` level and then shared across all `brief`s to avoid repeatedly creating the same data/time formatting function. When rendering on the server, the `en-GB` locale and UTC is used; however later on the client side this is replaced with the client's preferred formatting within `brief`. 
+
+```TypeScript
+// file: src/components/brief-list.tsx
+// …
+import { isServer } from 'solid-js/web';
+// …
+import { makeBriefDateFormat } from '../lib/date-time';
+// …
+
+function briefDateFormat() {
+  if (isServer) {
+    return makeBriefDateFormat();
+  } else {
+    return makeBriefDateFormat(Intl.DateTimeFormat().resolvedOptions());
+  }
+}
+// …
+
+type Props = {
+  searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+  // … 
+  const format = briefDateFormat();
+  // … 
+
+}
+
+// …
+```
+
+A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route. Given that the route is *driven* by `brief-list` it can change the active note ID event before the route transition. 
+So rather than having the clicked `brief` perform the navigation, the functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation) (making it unecessary to pass a `brief` another prop for navigation).
+
+```TypeScript
+// file: src/components/brief-list.tsx
+import { createSignal, createMemo, For, onMount, Show } from 'solid-js';
+// …
+import {
+  createAsync,
+  useLocation,
+  useNavigate,
+  useParams,
+} from '@solidjs/router';
+// …
+import { hrefWithNote } from '../route-path';
+// …
+
+function findNoteId(target: unknown) {
+  if (
+    !(
+      target instanceof HTMLButtonElement &&
+      target.classList.contains('js:c-brief__open')
+    )
+  )
+    return undefined;
+
+  const container = target.closest('div.js\\:c-brief');
+
+  return container instanceof HTMLDivElement
+    ? container.dataset.noteId
+    : undefined;
+}
+
+// …
+type Props = {
+  searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+  const params = useParams();
+  const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
+
+  // Highlight clicked brief BEFORE initiating
+  // navigation to the associated note
+  const navigate = useNavigate();
+  const location = useLocation();
+  const navigateToClicked = (event: MouseEvent) => {
+    const noteId = findNoteId(event.target);
+    if (!noteId) return;
+
+    setClickedId([noteId, performance.now()]);
+    navigate(hrefWithNote(location, noteId));
+  };
+
+  // Choose the most recent of
+  // - ID of note navigated to
+  // - ID of brief clicked
+  const active = createMemo<[string, number]>(
+    (last) => {
+      const navId = params.noteId ?? '';
+      const [_id, lastTime] = last;
+      const clicked = clickedId();
+      return clicked[1] > lastTime ? clicked : [navId, performance.now()];
+    },
+    [params.noteId ?? '', performance.now()]
+  );
+
+  // Active ID is the one navigated to
+  // until another brief is clicked
+  const activeId = () => active()[0];
+
+  // … 
+  let root: HTMLElement | undefined;
+  onMount(() => {
+    if (root instanceof HTMLElement)
+      root.addEventListener('click', navigateToClicked);
+  });
+  // … 
+}
+
+// … 
+```
+
+`clickedId` is the accessor that tracks the last clicked brief as a pair consisting of the note ID and the time elasped since [`performance.timeOrigin`](https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin). 
+The signal is set by the `navigateToClicked` event listener that is mounted on the `root` element (a `<nav>`) of the component.
+The listener extracts the note ID from the clicked `brief`'s `data-note-id` [data attribute](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset), updates `clickedId` and triggers the necessary navigation.
+
+
+The `active` [`memo`](https://docs.solidjs.com/reference/basic-reactivity/create-memo) coordinates selecting the most recent of two reactive values: `clickedId` and route `params.noteId`.
+It's initialized to the route `params.noteId` (coupled with [`performance.now()`](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)) and re-evaluates when either reactive value changes.
+
+If the `clickedId` timestamp is more recent than the previously memoized value it's assumed that `clickedId` holds the most recent change and carries the most up-to-date `noteId` which is then accepted as the current value. Otherwise it's assumed that `params.noteId` is more current and used to create the most up-to-date value.
+
+Finally `activeId()` is implemented as a [derived signal](https://docs.solidjs.com/concepts/derived-values/derived-signals) that extracts the `noteId` from the `active()` pair. Within the confines of reactive JSX `activeId() === brief.id` then identifies the active brief, turning off (on) whenever another (the) brief is clicked.

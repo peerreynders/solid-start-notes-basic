@@ -19,15 +19,15 @@ const NAME_EDIT_ACTION = 'edit-action';
 const NAME_GET_BRIEFS = 'briefs';
 const NAME_GET_NOTE = 'note';
 
-const getBriefs = cache<
-	(search: string | undefined) => Promise<NoteBrief[]>,
-	Promise<NoteBrief[]>
->(async (search: string | undefined) => getBf(search), NAME_GET_BRIEFS);
+const getBriefs = cache<(search: string | undefined) => Promise<NoteBrief[]>>(
+	async (search: string | undefined) => getBf(search),
+	NAME_GET_BRIEFS
+);
 
-const getNote = cache<
-	(noteId: string) => Promise<Note | undefined>,
-	Promise<Note | undefined>
->(async (noteId: string) => getNt(noteId), NAME_GET_NOTE);
+const getNote = cache<(noteId: string) => Promise<Note | undefined>>(
+	async (noteId: string) => getNt(noteId),
+	NAME_GET_NOTE
+);
 
 const editAction = action(async (data: FormData) => {
 	const intent = data.get('intent');
