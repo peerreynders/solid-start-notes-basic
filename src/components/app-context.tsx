@@ -12,7 +12,7 @@ import {
 	type ParentProps,
 } from 'solid-js';
 
-export type LastEdit = ['new'] | ['edit', string] | ['delete', string];
+export type LastEdit = ['new'] | ['update', string] | ['delete', string];
 
 // Primitives over features …
 const [lastEdit, sendLastEdit] = createSignal<LastEdit | undefined>(undefined, {
@@ -44,8 +44,8 @@ function useAppContext() {
 	return ctx;
 }
 
-const useLastEdit = (): LastEditHolder => useAppContext();
+const useLastEdit: () => LastEditHolder = useAppContext;
 
-const useSendLastEdit = (): SendLastEditHolder => useAppContext();
+const useSendLastEdit: () => SendLastEditHolder = useAppContext;
 
 export { AppProvider, useLastEdit, useSendLastEdit };

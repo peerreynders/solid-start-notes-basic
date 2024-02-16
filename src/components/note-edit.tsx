@@ -91,7 +91,7 @@ function NoteEdit(props: Props) {
 		// inform the rest of the application
 		// of impending `new` or `edit`
 		const id = maybeNoteId(props.noteId);
-		sendLastEdit(id ? ['edit', id] : ['new']);
+		sendLastEdit(id ? ['update', id] : ['new']);
 
 		noteForm.requestSubmit();
 	};

@@ -156,7 +156,9 @@ interface RouteSectionProps<T = unknown> {
 
 ## Layout ([“App Shell”](https://developer.chrome.com/blog/app-shell)) 
 The orignal demo's layout is found in [`App.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/App.js) (server component) which **here** maps to [`app.tsx`](src/app.tsx) as
-![Top-level layout](docs/assets/layout.jpg)
+
+<img src="docs/assets/layout.jpg" alt="Top-level layout" width="720">
+
 
 - `search-field.tsx` holds the text to match against the titles of the existing notes.
 - `edit-bottom.tsx` triggers the opening of `note-new.tsx` in the `children` area
@@ -303,7 +305,7 @@ The `note` route component is used to display the selected note (`/notes/:noteid
 
 In edit mode it simply uses the `note-edit` component, otherwise the internal `NoteDisplay` component is used.
 
-![The `NoteDisplay` component as it is used by the `note` route component](./docs/assets/note-display.jpg)
+<img src="docs/assets/note-display.jpg" alt="The `NoteDisplay` component as it is used by the `note` route component" width="640">
 
 Each presentation has it's own suspense boundary; while `getNote()` hasn't settled yet, `NoteDisplay` will show `NoteSkeletonDisplay` and the other `NoteSkeletonEdit` instead.
 However the secondary objective of suspense is to scaffold the *future* DOM tree concurrently with the resolving data.
@@ -644,6 +646,9 @@ In this implementation the intent was reinterpreted to mean: “flash” when an
 
 The `app-context` manages a central `lastEdit` signal that allows the consumer of the `SendLastEditHolder` type (`useSendLastEdit()`) to broadcast a `LastEdit` value to the consumers of the `LastEditHolder` type (`useLastEdit()`). 
 
+> [!NOTE] 
+> The `LastEdit` type is intended to be used as a [discriminated union](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions).
+
 ```TypeScript
 // file: src/components/app-context.tsx
 
@@ -691,9 +696,9 @@ function useAppContext() {
   return ctx;
 }
 
-const useLastEdit = (): LastEditHolder => useAppContext();
+const useLastEdit: () => LastEditHolder = useAppContext;
 
-const useSendLastEdit = (): SendLastEditHolder => useAppContext();
+const useSendLastEdit: () => SendLastEditHolder = useAppContext;
 
 export { AppProvider, useLastEdit, useSendLastEdit };
 ```
@@ -780,6 +785,8 @@ The [`'use server'`](https://start.solidjs.com/api/server) directive instructs t
 
 All the remaining code is client side code *which will be **server rendered** on first load*. However without island routing (still experimental) all the rendering JavaScript is still downloaded to the client which SolidJS largely mitigates by ***always*** prioritizing small client side bundles.
 
+<img src="docs/assets/brief-list.jpg" alt="brief-list component" width="240">
+
 ```tsx
 // file: src/components/brief-list.tsx
 // …
@@ -823,7 +830,9 @@ function BriefList(props: Props) {
 }
 ```
 
-From a rendering perspective `BriefList` simply creates an unordered list of `Brief`s. The store accessed through the `briefs` accessor drives the the updates: 
+From a rendering perspective `BriefList` simply creates an unordered list of `Brief`s.
+The brief excerpt (summary) is stored with the associated note; even though it could be derived on each render, generating it only whenever the note is saved reduces the rendering overhead. 
+The store accessed through the `briefs` accessor drives the the updates: 
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -854,9 +863,9 @@ function BriefList(props: Props) {
 }
 ```
 
-[`createAsync()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#createasync) creates a asynchronous-to-synchronous value boundary which is necessary to effectively use a [`cache()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#cache) wrapped asynchrounous remote accessor. 
+[`createAsync()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#createasync) creates an “asynchronous to reactive (i.e. synchronous)” value boundary which is necessary to leverage a [`cache()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#cache) wrapped asynchrounous remote accessor. 
 
-`createAsync()` only returns a (signal) accessor but given that updates occur by “remote list” lacking any referential stability the use of a [store](https://docs.solidjs.com/reference/stores/using-stores#createstore) in combination with [`reconcile`](https://docs.solidjs.com/reference/stores/store-utilities#reconcile) is indicated.
+`createAsync()` only returns a (signal) accessor but given that updates occur by “remote list” lacking any referential stability, the use of a [store](https://docs.solidjs.com/reference/stores/using-stores#createstore) in combination with [`reconcile`](https://docs.solidjs.com/reference/stores/store-utilities#reconcile) is indicated.
 
 Fortunately there is a tactic to deal with this apparent [impedance mismatch](https://agiledata.org/essays/impedancemismatch.html); return the store from the function being wrapped by `createAsync()`. 
 Meanwhile in the wrapped async function *reconcile* the store with the most recent “remote list” while always returning the reference to the now up-to-date and referentially stable store.
@@ -913,8 +922,8 @@ function BriefList(props: Props) {
 // …
 ```
 
-A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route. Given that the route is *driven* by `brief-list` it can change the active note ID event before the route transition. 
-So rather than having the clicked `brief` perform the navigation, the functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation) (making it unecessary to pass a `brief` another prop for navigation).
+A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route. Given that the route is *driven* by `brief-list` it can change the active note ID even *before* the route transition. 
+So rather than having the clicked `brief` perform the navigation, the functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation) (making it unnecessary to pass each `brief` a separate prop for navigation).
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -953,6 +962,7 @@ type Props = {
 
 function BriefList(props: Props) {
   const params = useParams();
+  const noteId = () => params.noteId ?? '';
   const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
 
   // Highlight clicked brief BEFORE initiating
@@ -960,11 +970,11 @@ function BriefList(props: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const navigateToClicked = (event: MouseEvent) => {
-    const noteId = findNoteId(event.target);
-    if (!noteId) return;
+    const id = findNoteId(event.target);
+    if (!id) return;
 
-    setClickedId([noteId, performance.now()]);
-    navigate(hrefWithNote(location, noteId));
+    setClickedId([id, performance.now()]);
+    navigate(hrefWithNote(location, id));
   };
 
   // Choose the most recent of
@@ -972,7 +982,7 @@ function BriefList(props: Props) {
   // - ID of brief clicked
   const active = createMemo<[string, number]>(
     (last) => {
-      const navId = params.noteId ?? '';
+      const navId = noteId();
       const [_id, lastTime] = last;
       const clicked = clickedId();
       return clicked[1] > lastTime ? clicked : [navId, performance.now()];
@@ -1007,3 +1017,188 @@ It's initialized to the route `params.noteId` (coupled with [`performance.now()`
 If the `clickedId` timestamp is more recent than the previously memoized value it's assumed that `clickedId` holds the most recent change and carries the most up-to-date `noteId` which is then accepted as the current value. Otherwise it's assumed that `params.noteId` is more current and used to create the most up-to-date value.
 
 Finally `activeId()` is implemented as a [derived signal](https://docs.solidjs.com/concepts/derived-values/derived-signals) that extracts the `noteId` from the `active()` pair. Within the confines of reactive JSX `activeId() === brief.id` then identifies the active brief, turning off (on) whenever another (the) brief is clicked.
+
+Each `brief`'s `flush` prop is provided with the help of [`useLastEdit()`](#app-context).
+
+```TypeScript
+// file: src/components/brief-list.tsx
+// …
+import {
+  createAsync,
+  useLocation,
+  useNavigate,
+  useParams,
+} from '@solidjs/router';
+// …
+import { useLastEdit, type LastEditHolder } from './app-context';
+// …
+
+function deriveLastUpdateId(
+  noteId: () => string,
+  lastEdit: LastEditHolder['lastEdit']
+) {
+  const NO_UPDATED_ID = '';
+
+  return () => {
+    const last = lastEdit();
+    switch (last?.[0]) {
+      case undefined:
+      case 'delete': {
+        return NO_UPDATED_ID;
+      }
+      case 'update': {
+        return last[1];
+      }
+      case 'new': {
+        // IDs are server assigned so get it form the URL
+        // of the currently open note.
+        const id = noteId();
+        return typeof id === 'string' && id.length > 0 ? id : NO_UPDATED_ID;
+      }
+      default:
+        return NO_UPDATED_ID;
+    }
+  };
+}
+
+type Props = {
+  searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+  const params = useParams();
+  const noteId = () => params.noteId ?? '';
+  // …
+
+  // updatedId
+  const { lastEdit } = useLastEdit();
+  const updatedId = createMemo(deriveLastUpdateId(noteId, lastEdit));
+
+  // …
+}
+
+// …
+```
+
+In this instance a `lastEdit()` value of `['delete', noteId]` doesn't communicate anything of value as a `brief` of a deleted `Note` will never appear on the `brief-list`.
+
+`['update', noteId]` is the simplest case as the `noteId` can be obtained directly from the pair.
+
+`['new']` will run twice.
+Initially when the new `Note` is sent to the server `params.noteId` won't have anything of value. 
+But because the reactive value was referenced the derivation will run again once `params.noteId` has been set to the new `Note`'s ID due to the navigaton that was triggered by saving the new `Note`.
+So in the end `updatedId()` will hold the ID of the new `Note` (after briefly being an empty string). 
+
+Within (reactive) JSX `updatedId() === brief.id` indicates to a brief on the list whether it has been recently `flushed`; on the leading edge of the property being set the `brief` can initiate a CSS “flash” animation.
+
+### brief
+
+(Original server component [`SidebarNote.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNote.js), client component [`SidebarNoteContent.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js))
+
+The orginal [`SidebarNoteContent.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/SidebarNoteContent.js)):
+- Shows the `Note`'s title and updated date.
+- Features a toggle to expand/hide the summary/extract.
+- Navigates to the full `Note` when clicked.
+- Triggers a “flash” animation when the title changes between renders.
+
+This particular brief implementation does not use component state to drive the visibility of the summary/excerpt.
+The DOM is fully rendered but the state of the `c-brief__summary-state` checkbox controls the opacity and position of `c-brief__summary` with CSS rulesets.
+
+<img src="docs/assets/brief.jpg" alt="brief component" width="480">
+
+```tsx
+// file: src/components/brief.tsx
+import { createUniqueId, onMount, Show } from 'solid-js';
+import { NoHydration } from 'solid-js/web';
+import { localizeFormat, type FormatFn } from '../lib/date-time';
+
+type Props = {
+  noteId: string;
+  title: string;
+  summary: string;
+  updatedAt: number;
+  pending: boolean;
+  active: boolean;
+  flushed: boolean;
+  format: FormatFn;
+};
+
+const CLASSNAME_FLASH = 'js:c-brief--flash';
+
+const classListBrief = (flushed: boolean) =>
+  'js:c-brief c-brief' + (flushed ? ' ' + CLASSNAME_FLASH : '');
+
+const classListOpen = (
+  active: boolean | undefined,
+  pending: boolean | undefined
+) =>
+  'js:c-brief__open c-brief__open' +
+  (active ? ' c-brief--active' : '') +
+  (pending ? ' c-brief--pending' : '');
+
+function Brief(props: Props) {
+  let brief: HTMLDivElement | undefined;
+  function removeFlash(event: AnimationEvent) {
+    if (event.animationName === 'flash')
+      brief?.classList.remove(CLASSNAME_FLASH);
+  }
+
+  let header: HTMLElement | undefined;
+  const toggleId = createUniqueId();
+  // non-reactive
+  const [updatedAt, updatedISO] = props.format(props.updatedAt);
+
+  onMount(() => {
+    // After hydration correct the display date/time
+    // if it deviates from the server generated one
+    // (a request may carry the locale but not the timezone)
+    // Also `ref` doesn't work on elements inside `NoHydration`
+    localizeFormat(props.format, header);
+  });
+
+  return (
+    <div
+      ref={brief}
+      class={classListBrief(props.flushed)}
+      onAnimationEnd={removeFlash}
+      data-note-id={props.noteId}
+    >
+      <header ref={header}>
+        <strong>{props.title}</strong>
+        <NoHydration>
+          <time datetime={updatedISO}>{updatedAt}</time>
+        </NoHydration>
+      </header>
+      <input id={toggleId} type="checkbox" class="c-brief__summary-state" />
+      <button class={classListOpen(props.active, props.pending)}>
+        Open note for preview
+      </button>
+      <label for={toggleId} class="c-brief__summary-toggle">
+        <svg
+          viewBox="0 0 512 512"
+          aria-hidden="true"
+          fill="currentColor"
+          width="1em"
+          height="1em"
+        >
+          <path d="M60 99.333l196 196 196-196 60 60-256 256-256-256z"></path>
+        </svg>
+      </label>
+      <p class="c-brief__summary">
+        <Show
+          when={props.summary}
+          fallback={<span class="c-brief__no-content">(No Content)</span>}
+        >
+          {props.summary}
+        </Show>
+      </p>
+    </div>
+  );
+}
+
+export { Brief };
+```
+
+### note-preview
+
+… to be continued.

@@ -60,11 +60,11 @@ function Brief(props: Props) {
 					<time datetime={updatedISO}>{updatedAt}</time>
 				</NoHydration>
 			</header>
-			<input id={toggleId} type="checkbox" class="c-brief__details-state" />
+			<input id={toggleId} type="checkbox" class="c-brief__summary-state" />
 			<button class={classListOpen(props.active, props.pending)}>
 				Open note for preview
 			</button>
-			<label for={toggleId} class="c-brief__details-toggle">
+			<label for={toggleId} class="c-brief__summary-toggle">
 				<svg
 					viewBox="0 0 512 512"
 					aria-hidden="true"
@@ -75,7 +75,7 @@ function Brief(props: Props) {
 					<path d="M60 99.333l196 196 196-196 60 60-256 256-256-256z"></path>
 				</svg>
 			</label>
-			<p class="c-brief__details">
+			<p class="c-brief__summary">
 				<Show
 					when={props.summary}
 					fallback={<span class="c-brief__no-content">(No Content)</span>}

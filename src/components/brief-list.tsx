@@ -1,5 +1,12 @@
 // file: src/components/brief-list.tsx
-import { createSignal, createMemo, For, onMount, Show } from 'solid-js';
+import {
+	createSignal,
+	createMemo,
+	For,
+	onMount,
+	Show,
+	type Accessor,
+} from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
 import {
@@ -12,7 +19,7 @@ import { getBriefs } from '../api';
 import { hrefWithNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
 import { Brief } from './brief';
-import { useLastEdit } from './app-context';
+import { useLastEdit, type LastEditHolder } from './app-context';
 
 import type { NoteBrief } from '../types';
 
@@ -62,67 +69,82 @@ function setupBriefStore(currentSearch: () => string | undefined) {
 	] as const;
 }
 
-type Props = {
-	searchText: string | undefined;
-};
+type PendingState = [id: string, timestamp: number];
 
-function BriefList(props: Props) {
-	const params = useParams();
-	const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
-
-	// Highlight clicked brief BEFORE initiating
-	// navigation to the associated note
-	const navigate = useNavigate();
-	const location = useLocation();
-	const navigateToClicked = (event: MouseEvent) => {
-		const noteId = findNoteId(event.target);
-		if (!noteId) return;
-
-		setClickedId([noteId, performance.now()]);
-		navigate(hrefWithNote(location, noteId));
+const derivePendingState =
+	(noteId: () => string, clickedNoteId: Accessor<[string, number]>) =>
+	(last: PendingState): PendingState => {
+		noteId(); // i.e. rerun on change
+		const clicked = clickedNoteId();
+		return clicked[1] > last[1] ? clicked : ['', performance.now()];
 	};
 
-	// Choose the most recent of
-	// - ID of note navigated to
-	// - ID of brief clicked
-	const active = createMemo<[string, number]>(
-		(last) => {
-			const navId = params.noteId ?? '';
-			const [_id, lastTime] = last;
-			const clicked = clickedId();
-			return clicked[1] > lastTime ? clicked : [navId, performance.now()];
-		},
-		[params.noteId ?? '', performance.now()]
-	);
-
-	// Active ID is the one navigated to
-	// until another brief is clicked
-	const activeId = () => active()[0];
-
-	// updatedId
+function deriveLastUpdateId(
+	noteId: () => string,
+	lastEdit: LastEditHolder['lastEdit']
+) {
 	const NO_UPDATED_ID = '';
-	const { lastEdit } = useLastEdit();
-	const updatedId = createMemo(() => {
+
+	return () => {
 		const last = lastEdit();
 		switch (last?.[0]) {
 			case undefined:
 			case 'delete': {
 				return NO_UPDATED_ID;
 			}
-			case 'edit': {
+			case 'update': {
 				return last[1];
 			}
 			case 'new': {
 				// IDs are server assigned so get it form the URL
 				// of the currently open note.
-				return typeof params.noteId === 'string' && params.noteId.length > 0
-					? params.noteId
-					: NO_UPDATED_ID;
+				const id = noteId();
+				return typeof id === 'string' && id.length > 0 ? id : NO_UPDATED_ID;
 			}
 			default:
 				return NO_UPDATED_ID;
 		}
-	});
+	};
+}
+
+type Props = {
+	searchText: string | undefined;
+};
+
+function BriefList(props: Props) {
+	const params = useParams();
+	const noteId = () => params.noteId ?? '';
+	const [clickedNoteId, setClickedNoteId] = createSignal<[string, number]>([
+		'',
+		0,
+	]);
+
+	// Highlight clicked brief BEFORE initiating
+	// navigation to the associated note
+	const navigate = useNavigate();
+	const location = useLocation();
+	const navigateToClicked = (event: MouseEvent) => {
+		const id = findNoteId(event.target);
+		if (!id) return;
+
+		setClickedNoteId([id, performance.now()]);
+		navigate(hrefWithNote(location, id));
+	};
+
+	// Choose the most recent of
+	// - ID of note navigated to
+	// - ID of brief clicked
+	const pendingState = createMemo<PendingState>(
+		derivePendingState(noteId, clickedNoteId),
+		['', performance.now()]
+	);
+
+	// pending ID clicked until navigation complete
+	const pendingId = () => pendingState()[0];
+
+	// updatedId
+	const { lastEdit } = useLastEdit();
+	const updatedId = createMemo(deriveLastUpdateId(noteId, lastEdit));
 
 	// Note: briefs is a signal carrying a finer grained store
 	const briefs = createAsync(...setupBriefStore(() => props.searchText));
@@ -149,8 +171,8 @@ function BriefList(props: Props) {
 									title={brief.title}
 									summary={brief.summary}
 									updatedAt={brief.updatedAt}
-									active={activeId() === brief.id}
-									pending={false}
+									active={noteId() === brief.id}
+									pending={pendingId() === brief.id}
 									flushed={updatedId() === brief.id}
 									format={format}
 								/>
