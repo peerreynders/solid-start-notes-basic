@@ -26,8 +26,8 @@ const getBriefs = (search: string | undefined) =>
 const toMaybeNote = (note: NotePersist | undefined) =>
 	note ? toNote(note) : undefined;
 
-const getNote = (id: string) => selectNote(id).then(toMaybeNote);
-// const getNote = (id: string) =>	selectNote(id).then(toMaybeNote).then(delay(2000));
+const getNote = (id: string) =>
+	selectNote(id).then(toMaybeNote); /*.then(delay(2000))*/
 
 function upsertNote(title: string, body: string, id?: string) {
 	const excerpt = excerptFrom(body);

@@ -5,7 +5,7 @@ import { Route, Router, useSearchParams } from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
 import { EditButton } from './components/edit-button';
 import SearchField from './components/search-field';
-import { BriefList, BriefListSkeleton } from './components/brief-list';
+import { BriefList } from './components/brief-list';
 import Note from './routes/note';
 import NoteNew from './routes/note-new';
 import NoteNone from './routes/note-none';
@@ -38,11 +38,13 @@ function Layout(props: ParentProps) {
 						<SearchField />
 						<EditButton kind={'new'}>New</EditButton>
 					</section>
-					<Suspense fallback={<BriefListSkeleton />}>
+					<Suspense>
 						<BriefList searchText={searchParams.search} />
 					</Suspense>
 				</section>
-				<section class="c-note-view c-main__column">{props.children}</section>
+				<section class="c-note-view c-main__column">
+					<Suspense>{props.children}</Suspense>
+				</section>
 			</main>
 		</MetaProvider>
 	);

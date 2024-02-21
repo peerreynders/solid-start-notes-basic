@@ -54,8 +54,16 @@ const hrefToHome = (current: Location<unknown>) =>
 const hrefToNoteNew = (current: Location<unknown>) =>
 	noteNewPathname + (current.search ?? '');
 
-const hrefWithNote = (current: Location<unknown>, noteId: string) =>
-	notePathname(noteId) + (current.search ?? '');
+function nextToNote(current: Location<unknown>, noteId: string) {
+	const pathname = notePathname(noteId);
+	const search = current.search ?? '';
+
+	return {
+		pathname,
+		search,
+		href: pathname + search,
+	};
+}
 
 const MAIN_TITLE = 'SolidStart Notes';
 
@@ -66,8 +74,8 @@ export {
 	hrefToHome,
 	hrefToNoteNew,
 	hrefToNoteUpdate,
-	hrefWithNote,
 	makeTitle,
+	nextToNote,
 	rootpathToHome,
 	rootpathWithNote,
 	searchFromRootpath,

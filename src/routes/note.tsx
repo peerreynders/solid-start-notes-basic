@@ -1,14 +1,14 @@
 // file: src/routes/note.tsx
-import { onMount, Show, Suspense } from 'solid-js';
+import { onMount, Show } from 'solid-js';
 import { isServer, NoHydration } from 'solid-js/web';
 import { createAsync, useNavigate } from '@solidjs/router';
 import { Title } from '@solidjs/meta';
 import { hrefToHome, makeTitle } from '../route-path';
 import { getNote } from '../api';
 import { localizeFormat, makeNoteDateFormat } from '../lib/date-time';
-import { NoteEdit, NoteEditSkeleton } from '../components/note-edit';
+import { NoteEdit } from '../components/note-edit';
 import { EditButton } from '../components/edit-button';
-import { NotePreview, NotePreviewSkeleton } from '../components/note-preview';
+import { NotePreview } from '../components/note-preview';
 
 import type { Location, Navigator, RouteSectionProps } from '@solidjs/router';
 import type { Note } from '../types';
@@ -40,16 +40,6 @@ function makeTransformOrNavigate(
 	};
 }
 
-const NoteDisplaySkeleton = () => (
-	<div class="c-note-skeleton-display" role="progressbar" aria-busy="true">
-		<div class="c-note-skeleton-display__header">
-			<div class="c-note-skeleton-title" />
-			<div class="c-note-skeleton-display__done" />
-		</div>
-		<NotePreviewSkeleton />
-	</div>
-);
-
 type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
 function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
@@ -71,7 +61,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
 	});
 
 	return (
-		<Suspense fallback={<NoteDisplaySkeleton />}>
+		<>
 			<Title>{makeTitle(props.noteId)}</Title>
 			<div class="c-note">
 				<div class="c-note__header">
@@ -88,7 +78,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
 				</div>
 				<NotePreview body={ofNote('body')} />
 			</div>
-		</Suspense>
+		</>
 	);
 }
 
@@ -109,13 +99,11 @@ export default function Note(props: NoteProps) {
 				when={isEdit()}
 				fallback={<NoteDisplay noteId={noteId()} note={note()} />}
 			>
-				<Suspense fallback={<NoteEditSkeleton />}>
-					<NoteEdit
-						noteId={noteId()}
-						initialTitle={note()?.title}
-						initialBody={note()?.body}
-					/>
-				</Suspense>
+				<NoteEdit
+					noteId={noteId()}
+					initialTitle={note()?.title}
+					initialBody={note()?.body}
+				/>
 			</Show>
 		</>
 	);

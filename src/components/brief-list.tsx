@@ -1,12 +1,5 @@
 // file: src/components/brief-list.tsx
-import {
-	createSignal,
-	createMemo,
-	For,
-	onMount,
-	Show,
-	type Accessor,
-} from 'solid-js';
+import { createSignal, createMemo, For, onMount, Show } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { isServer } from 'solid-js/web';
 import {
@@ -16,7 +9,7 @@ import {
 	useParams,
 } from '@solidjs/router';
 import { getBriefs } from '../api';
-import { hrefWithNote } from '../route-path';
+import { nextToNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
 import { Brief } from './brief';
 import { useLastEdit, type LastEditHolder } from './app-context';
@@ -69,16 +62,6 @@ function setupBriefStore(currentSearch: () => string | undefined) {
 	] as const;
 }
 
-type PendingState = [id: string, timestamp: number];
-
-const derivePendingState =
-	(noteId: () => string, clickedNoteId: Accessor<[string, number]>) =>
-	(last: PendingState): PendingState => {
-		noteId(); // i.e. rerun on change
-		const clicked = clickedNoteId();
-		return clicked[1] > last[1] ? clicked : ['', performance.now()];
-	};
-
 function deriveLastUpdateId(
 	noteId: () => string,
 	lastEdit: LastEditHolder['lastEdit']
@@ -107,6 +90,11 @@ function deriveLastUpdateId(
 	};
 }
 
+type ClickedInfo = {
+	noteId: string;
+	pathname: string;
+};
+
 type Props = {
 	searchText: string | undefined;
 };
@@ -114,33 +102,26 @@ type Props = {
 function BriefList(props: Props) {
 	const params = useParams();
 	const noteId = () => params.noteId ?? '';
-	const [clickedNoteId, setClickedNoteId] = createSignal<[string, number]>([
-		'',
-		0,
-	]);
+	const location = useLocation();
+	const [clickedInfo, setClickedInfo] = createSignal<ClickedInfo>({
+		noteId: noteId(),
+		pathname: location.pathname,
+	});
+	const pendingId = createMemo(() =>
+		clickedInfo().pathname !== location.pathname ? clickedInfo().noteId : ''
+	);
 
 	// Highlight clicked brief BEFORE initiating
 	// navigation to the associated note
 	const navigate = useNavigate();
-	const location = useLocation();
 	const navigateToClicked = (event: MouseEvent) => {
 		const id = findNoteId(event.target);
 		if (!id) return;
 
-		setClickedNoteId([id, performance.now()]);
-		navigate(hrefWithNote(location, id));
+		const next = nextToNote(location, id);
+		setClickedInfo({ noteId: id, pathname: next.pathname });
+		navigate(next.href);
 	};
-
-	// Choose the most recent of
-	// - ID of note navigated to
-	// - ID of brief clicked
-	const pendingState = createMemo<PendingState>(
-		derivePendingState(noteId, clickedNoteId),
-		['', performance.now()]
-	);
-
-	// pending ID clicked until navigation complete
-	const pendingId = () => pendingState()[0];
 
 	// updatedId
 	const { lastEdit } = useLastEdit();
@@ -185,20 +166,4 @@ function BriefList(props: Props) {
 	);
 }
 
-function BriefListSkeleton() {
-	return (
-		<ul class="c-brief-list-skeleton">
-			<li>
-				<div class="c-brief-list-skeleton__brief" />
-			</li>
-			<li>
-				<div class="c-brief-list-skeleton__brief" />
-			</li>
-			<li>
-				<div class="c-brief-list-skeleton__brief" />
-			</li>
-		</ul>
-	);
-}
-
-export { BriefList, BriefListSkeleton };
+export { BriefList };
