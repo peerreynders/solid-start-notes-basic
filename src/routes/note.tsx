@@ -84,7 +84,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
 
 export type NoteProps = RouteSectionProps & { edit: boolean };
 
-export default function Note(props: NoteProps) {
+function Note(props: NoteProps) {
 	const isEdit = () => props.edit;
 	const noteId = () => props.params.noteId;
 	const navigate = useNavigate();
@@ -108,3 +108,5 @@ export default function Note(props: NoteProps) {
 		</>
 	);
 }
+
+export { Note };

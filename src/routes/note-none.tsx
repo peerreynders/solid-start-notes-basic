@@ -2,7 +2,7 @@
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
 
-export default function NoteNone() {
+function NoteNone() {
 	return (
 		<>
 			<Title>{makeTitle()}</Title>
@@ -12,3 +12,5 @@ export default function NoteNone() {
 		</>
 	);
 }
+
+export { NoteNone };

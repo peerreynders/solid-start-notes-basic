@@ -3,7 +3,7 @@ import { Title } from '@solidjs/meta';
 import { HttpStatusCode } from '@solidjs/start';
 import { makeTitle } from '../route-path';
 
-export default function NotFound() {
+function NotFound() {
 	return (
 		<div class="c-not-found">
 			<Title>{makeTitle('Not Found')}</Title>
@@ -19,3 +19,5 @@ export default function NotFound() {
 		</div>
 	);
 }
+
+export { NotFound };

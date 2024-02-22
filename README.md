@@ -8,7 +8,7 @@
 
 — [What Comes After GraphQL?](https://youtu.be/gfKrdN1RzoI?t=14516)
 
-Updated for SolidStart v0.5.7 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
+Updated for SolidStart v0.5.9 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
 The app is a port of the December 2020 [React Server Components Demo](https://github.com/reactjs/server-components-demo) ([LICENSE](https://github.com/reactjs/server-components-demo/blob/main/LICENSE); [no pg fork](https://github.com/pomber/server-components-demo/), [Data Fetching with React Server Components](https://youtu.be/TQQPAU21ZUw)) but here it's just a basic client side routing implementation.
 It doesn't use a database but stores the notes via the [Unstorage Node.js Filesystem (Lite) driver](https://unstorage.unjs.io/drivers/fs#nodejs-filesystem-lite) . This app is not intended to be deployed but simply serves as an experimental platform.
 
@@ -76,21 +76,21 @@ import {
 // …
 import type { NoteBrief, Note } from './types';
 // …
-const getBriefs = cache<
-  (search: string | undefined) => Promise<NoteBrief[]>,
-  Promise<NoteBrief[]>
->(async (search: string | undefined) => getBf(search), NAME_GET_BRIEFS);
+const getBriefs = cache<(search: string | undefined) => Promise<NoteBrief[]>>(
+  async (search: string | undefined) => getBf(search),
+  NAME_GET_BRIEFS
+);
 
-const getNote = cache<
-  (noteId: string) => Promise<Note | undefined>,
-  Promise<Note | undefined>
->(async (noteId: string) => getNt(noteId), NAME_GET_NOTE);
+const getNote = cache<(noteId: string) => Promise<Note | undefined>>(
+  async (noteId: string) => getNt(noteId),
+  NAME_GET_NOTE
+);
 // …
 export { getBriefs, getNote, editAction };
 ```
 
-Both of these functions are wrapped in [`solid-router`](https://github.com/solidjs/solid-router)'s [`cache()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#cache). The page is fully server rendered on initial load but all subsequent updates are purely client rendered. 
-But the router's `cache()` tracks the currently loaded `:noteId` and `:search` keys; so rather than running **both** `getBriefs` and `getNote` server fetches the router will only use the one whose key has actually changed (or both if both have changed).
+Both of these functions are wrapped in [`@solidjs/router`](https://docs.solidjs.com/reference/solid-router/components/router)'s [`cache()`](https://docs.solidjs.com/reference/solid-router/data-apis/cache). The page is fully server rendered on initial load but all subsequent updates are purely client rendered. 
+But the router's `cache()` tracks the currently loaded `:noteId` and `:search` keys; so rather than running **both** `getBriefs` and `getNote` server fetches, the router will only use the one whose key has actually changed (or both if both have changed).
 
 So only the portion of the page that needs to change is updated on the client for `navigate()` even when the path changes.
 The `search` parameter affects the content of the `<nav>` within the layout that is independent from any one `Route` component; `noteId` on the other hand directly impacts which `Route` component is chosen.
@@ -171,10 +171,8 @@ The orignal demo's layout is found in [`App.js`](https://github.com/reactjs/serv
 // …
 import { Route, Router, useSearchParams } from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
-import EditButton from './components/edit-button';
-import SearchField from './components/search-field';
-import BriefList from './components/brief-list';
-import BriefListSkeleton from './components/brief-list-skeleton';
+import { EditButton } from './components/edit-button';
+import { SearchField } from './components/search-field';
 // …
 import type { ParentProps } from 'solid-js';
 // …
@@ -201,18 +199,56 @@ function Layout(props: ParentProps) {
             <SearchField />
             <EditButton kind={'new'}>New</EditButton>
           </section>
-          <Suspense fallback={<BriefListSkeleton />}>
+          <Suspense>
             <BriefList searchText={searchParams.search} />
           </Suspense>
         </section>
-        <section class="c-note-view c-main__column">{props.children}</section>
+        <section class="c-note-view c-main__column">
+          <Suspense>{props.children}</Suspense>
+        </section>
       </main>
     </MetaProvider>
   );
 }
 ```
 
-Note the [Suspense](https://docs.solidjs.com/references/api-reference/control-flow/Suspense) boundary around `BriefList`. This way content under the suspense boundary is not displayed until all asynchonous values under it have resolved; meanwhile the `fallback` is shown.
+### On `Suspense` and `useTransition`
+
+Browsers natively implement a behaviour called [paint holding](https://developer.chrome.com/blog/paint-holding); when the browser navigates to a new page (fetched from the server, i.e. not client rendered) the URL in the address bar will update; the old page's *paint is held* while the DOM of the new page is rendered in the background.
+Once the new page is *painted* the *old paint* is swapped out for the *new paint*.
+
+Solid's [`useTransition`](https://docs.solidjs.com/reference/reactive-utilities/use-transition) is the primitive used to implement *Component/Block-level paint holding*. To work it relies on the presence of a [`<Suspense>`](https://docs.solidjs.com/references/api-reference/control-flow/Suspense) boundary which determines the scope and timing of the “transition”. 
+While there are unsettled async operations under the `Suspense` boundary the transition allows rendering of the new content to progress in the background while the old DOM (fragment) is still visible and active on the browser.
+
+The interaction between `Suspense` and transition has consequences for the `Suspense` [`fallback`](https://docs.solidjs.com/reference/components/suspense#props). The `fallback` will only ever show on the first render *of the suspense boundary*.
+At that time there is no “block of paint/DOM” to “hold” as the `Suspense` boundary didn't previously exist so the `fallback` is rendered.
+After that transitions take over for as long as the `Suspense` boundary exists and the `fallback` will never be seen again when new unsettled async operations occur under the `Suspense` boundary.
+
+Consequently placement of the `Suspense` boundary is crucial for consistent UX. Placing the `Suspense` boundary at the root of a component will cause the `fallback` to be displayed when it's rendered but transitions take over for subsequent async operations which may seem inconsistent from the UX point of view.
+Placing the `Suspense` boundary around the “slot” where various components may alternately appear is often the right choice because then transitions between components work as expected, the *previous component paint is held* while the new component renders in the background.
+
+If the `Suspense` `fallback` needs to appear whenever an unsettled async operation occurs under the boundary then `useTransition` or packages that leverage it like [`@solidjs/router`](https://docs.solidjs.com/guides/routing-and-navigation) **cannot** be used.
+
+For the signal exposed by [`useIsRouting()`](https://docs.solidjs.com/guides/routing-and-navigation#useisrouting) to work as expected:
+
+- stable, top-level `Suspense` boundaries need to exist inside the [`root`](https://docs.solidjs.com/routing/defining-routes#component-routing) layout
+- unsettled async operations **have to be allowed** to propagate all the way to the top-level `Suspense` boundaries in the `root` layout.
+The `isRouting` signal will switch to `false` once everything settles in the top-level boundary; at that time there can still be unsettled operations that were intercepted by nested `Suspense` boundaries.
+
+
+This adds up to very different rendering behaviour compared to what is implememented by the RSC demo.
+React's transition mechanism **does not** override the `Suspense` fallback.
+It renders the new content in the background (the “transition” part) but it also replaces the old content with the `Suspense` `fallback`. 
+In cases where a transition can complete in under 1 (or 2) seconds, intermittent “skeleton” screens [are judged to provide worse UX](https://www.nngroup.com/articles/skeleton-screens/#are-skeleton-screens-better-than-progress-bars-or-spinners) than simply *holding paint*. 
+The demo makes use of component skeletons ([`NoteListSkeleton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteListSkeleton.js), [`NoteSkeleton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteSkeleton.js)).
+
+Given the use of SSR and the browser's own paint holding behaviour, it turns out that the top-level `Suspense` boundaries don't even need fallbacks! The server doesn't send the response until the initial render is complete (i.e. all async operations have settled) so the initial content is already present in the server's HTML; therefore all subsequent client side route renders are governed by transitions.
+
+In an alternate, island architecture the layout could be immediately SSR rendered with skeleton islands and sent back to the browser while the island content is streamed in later once it is ready.
+
+Finally the [`search-field`](#search-field) doubles as an app-wide spinner for those occasions where transitions don't occur quickly enough.
+The spinner is driven by the `isRouting` signal; to make it as accurate as possible, only two `Suspense` boundaries exist within the entire application, both within the top level `root` component; one enveloping the route component children, the other around the [`brief-list`](#brief-list).
+ 
 
 ## Route Content (`Route` components)
 

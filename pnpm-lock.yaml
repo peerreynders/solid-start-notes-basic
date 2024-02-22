@@ -9,14 +9,14 @@ dependencies:
     specifier: ^0.29.3
     version: 0.29.3(solid-js@1.8.15)
   '@solidjs/router':
-    specifier: ^0.12.0
-    version: 0.12.0(solid-js@1.8.15)
+    specifier: ^0.12.4
+    version: 0.12.4(solid-js@1.8.15)
   '@solidjs/start':
-    specifier: ^0.5.7
-    version: 0.5.7(solid-js@1.8.15)(vinxi@0.2.1)(vite@5.0.11)
+    specifier: ^0.5.9
+    version: 0.5.9(solid-js@1.8.15)(vinxi@0.2.1)(vite@5.0.11)
   dompurify:
-    specifier: ^3.0.8
-    version: 3.0.8
+    specifier: ^3.0.9
+    version: 3.0.9
   marked:
     specifier: ^12.0.0
     version: 12.0.0
@@ -27,8 +27,8 @@ dependencies:
     specifier: 8.0.0-alpha.14
     version: 8.0.0-alpha.14
   sanitize-html:
-    specifier: ^2.11.0
-    version: 2.11.0
+    specifier: ^2.12.0
+    version: 2.12.0
   solid-js:
     specifier: ^1.8.15
     version: 1.8.15
@@ -1372,8 +1372,8 @@ packages:
       solid-js: 1.8.15
     dev: false
 
-  /@solidjs/router@0.12.0(solid-js@1.8.15):
-    resolution: {integrity: sha512-9dyBL35T7x86RBSJBMu9jLGytBTmWQehb0uxez7TfzYtwI+v9poo2fzRbcCCrWVTQkwGD/rWvqmxUvczp2at3A==}
+  /@solidjs/router@0.12.4(solid-js@1.8.15):
+    resolution: {integrity: sha512-2S5QWYmpWSIWn5ei85eoStEMmECERX2BiBkEvmqYDrgX79I8D95YaWVdHbcFGOxISPTY4TP7RxjRiofs/AIFJQ==}
     peerDependencies:
       solid-js: ^1.8.6
     dependencies:
@@ -1388,8 +1388,8 @@ packages:
       solid-js: 1.8.15
     dev: false
 
-  /@solidjs/start@0.5.7(solid-js@1.8.15)(vinxi@0.2.1)(vite@5.0.11):
-    resolution: {integrity: sha512-iviUIg3wiUKh1rTkQpJZ+/9WVO93Rzn8O2kWNYL/h1NmNPTqG415PfrCqfEO3uLuTsuPajys/UjW1Jxl0DZsFA==}
+  /@solidjs/start@0.5.9(solid-js@1.8.15)(vinxi@0.2.1)(vite@5.0.11):
+    resolution: {integrity: sha512-NNDmre4EYPQ6ZklfFZl1s4uvmGhsC61CMkOxcdfWS3+KAS0GpF52my7IztApKw4h+adLFbBy3qkF7qi8aCfcjw==}
     dependencies:
       '@vinxi/plugin-directives': 0.2.0(vinxi@0.2.1)
       '@vinxi/server-components': 0.2.0(vinxi@0.2.1)
@@ -2437,8 +2437,8 @@ packages:
     dependencies:
       domelementtype: 2.3.0
 
-  /dompurify@3.0.8:
-    resolution: {integrity: sha512-b7uwreMYL2eZhrSCRC4ahLTeZcPZxSmYfmcQGXGkXiZSNW1X85v+SDM5KsWcpivIiUBH47Ji7NtyUdpLeF5JZQ==}
+  /dompurify@3.0.9:
+    resolution: {integrity: sha512-uyb4NDIvQ3hRn6NiC+SIFaP4mJ/MdXlvtunaqK9Bn6dD3RuB/1S/gasEjDHD8eiaqdSael2vBv+hOs7Y+jhYOQ==}
     dev: false
 
   /domutils@3.1.0:
@@ -4389,8 +4389,8 @@ packages:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
     dev: false
 
-  /sanitize-html@2.11.0:
-    resolution: {integrity: sha512-BG68EDHRaGKqlsNjJ2xUB7gpInPA8gVx/mvjO743hZaeMCZ2DwzW7xvsqZ+KNU4QKwj86HJ3uu2liISf2qBBUA==}
+  /sanitize-html@2.12.0:
+    resolution: {integrity: sha512-2pq2H0b4npSaMPrRuauYVml1Q3BzaL67Y8WDOk9gsqoS8gS+VFZcgwF1ITJbfOCHgw1sUQMG14KwXyVE+75tSg==}
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0

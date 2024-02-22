@@ -3,7 +3,7 @@ import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
 import { NoteEdit } from '../components/note-edit';
 
-export default function NoteNew() {
+function NoteNew() {
 	return (
 		<>
 			<Title>{makeTitle('New Note')}</Title>
@@ -11,3 +11,5 @@ export default function NoteNew() {
 		</>
 	);
 }
+
+export { NoteNew };

@@ -4,12 +4,12 @@ import { mergeProps, Suspense } from 'solid-js';
 import { Route, Router, useSearchParams } from '@solidjs/router';
 import { MetaProvider } from '@solidjs/meta';
 import { EditButton } from './components/edit-button';
-import SearchField from './components/search-field';
+import { SearchField } from './components/search-field';
 import { BriefList } from './components/brief-list';
-import Note from './routes/note';
-import NoteNew from './routes/note-new';
-import NoteNone from './routes/note-none';
-import NotFound from './routes/not-found';
+import { Note } from './routes/note';
+import { NoteNew } from './routes/note-new';
+import { NoteNone } from './routes/note-none';
+import { NotFound } from './routes/not-found';
 
 import './styles/critical.scss';
 

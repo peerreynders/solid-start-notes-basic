@@ -27,7 +27,7 @@ const preventSubmit = (
 	}
 ) => event.preventDefault();
 
-export default function SearchField() {
+function SearchField() {
 	const searchInputId = createUniqueId();
 	const isRouting = useIsRouting();
 	const [searchParams, setSearchParams] = useSearchParams<SearchParams>();
@@ -48,3 +48,5 @@ export default function SearchField() {
 		</form>
 	);
 }
+
+export { SearchField };
