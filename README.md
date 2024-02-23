@@ -254,13 +254,15 @@ The spinner is driven by the `isRouting` signal; to make it as accurate as possi
 
 In the orignal demo [`Note.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/Note.js) (a server component) plays the role of the router based on the `{ selectedId, isEditing, searchText }` location value.
 
-As indicated earlier **here** we have the following mapping:
+As indicated earlier in **this implementation** we have the following route-to-component mapping:
 - `/` ➡ `note-none.tsx`
 - `/new` ➡ `note-new.tsx`
 - `/notes/:noteId` ➡ `note.tsx`
 - `/notes/:noteId/edit` ➡ `note.tsx`
 
-Here the server side functionality is captured in `getNote()`. SolidStart is responsible for generating the server code to generate the server side HTML, and the client side code for hydration and interactivity (which may include client side rendering but can be reduced to a minimum with islands in the future).   
+The original `Note.js` features both rendering and server side data access (via [`server/api.server.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/server/api.server.js#L175-L183)); here the server side functionality is contained separately in `getNote()` instead.
+
+During build time SolidStart generates the necessary RPC code for the implied API; during run time its SSR generates the full HTML, adding client side code for hydration and interactivity (which may result in client side rendering later on but can be reduced to a minimum with islands in the future).   
 
 ### `not-found`
 
@@ -272,7 +274,7 @@ import { Title } from '@solidjs/meta';
 import { HttpStatusCode } from '@solidjs/start';
 import { makeTitle } from '../route-path';
 
-export default function NotFound() {
+function NotFound() {
   return (
     <div class="c-not-found">
       <Title>{makeTitle('Not Found')}</Title>
@@ -288,6 +290,8 @@ export default function NotFound() {
     </div>
   );
 }
+
+export { NotFound };
 ```
 
 ### `note-none`
@@ -299,7 +303,7 @@ Placeholder content until a `:noteId` is selected.
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
 
-export default function NoteNone() {
+function NoteNone() {
   return (
     <>
       <Title>{makeTitle()}</Title>
@@ -309,6 +313,8 @@ export default function NoteNone() {
     </>
   );
 }
+
+export { NoteNone };
 ```
 
 ### `note-new`
@@ -319,20 +325,18 @@ Initializes the `note-editor` to create a new note.
 // file: src/routes/note-new.tsx
 import { Title } from '@solidjs/meta';
 import { makeTitle } from '../route-path';
-import NoteEditor from '../components/note-edit';
+import { NoteEdit } from '../components/note-edit';
 
-export default function NoteNew() {
+function NoteNew() {
   return (
     <>
       <Title>{makeTitle('New Note')}</Title>
-      <NoteEditor
-        noteId={undefined}
-        initialTitle={'Untitled'}
-        initialBody={''}
-      />
+      <NoteEdit noteId={undefined} initialTitle={'Untitled'} initialBody={''} />
     </>
   );
 }
+
+export { NoteNew };
 ```
 
 ### `note`
@@ -343,24 +347,23 @@ In edit mode it simply uses the `note-edit` component, otherwise the internal `N
 
 <img src="docs/assets/note-display.jpg" alt="The `NoteDisplay` component as it is used by the `note` route component" width="640">
 
-Each presentation has it's own suspense boundary; while `getNote()` hasn't settled yet, `NoteDisplay` will show `NoteSkeletonDisplay` and the other `NoteSkeletonEdit` instead.
-However the secondary objective of suspense is to scaffold the *future* DOM tree concurrently with the resolving data.
-So both `NoteDisplay` and it's alternate have to be able to create the DOM tree for the data to be placed into later.
+Both presentations, `NoteDisplay` and `NoteEdit`, operate under the `Suspense` boundary of the [layout component](#layout-app-shell). 
+To take full advantage of the transition's concurrent rendering (while [paint holiding](#on-suspense-and-usetransition)) both have to be able to render the structural DOM even *before* `getNote()` settles to deliver the data to be *then* placed into the DOM.
 
 That is why `NoteDisplay` is passed the seemingly redundant `noteId` separately; it is available **before** the `note` prop which will be initially `undefined`; similarly for `note-edit` the `noteId` prop is available immediately while both the `title` and `body` start out `undefined` to resolve later to their respective strings. 
 
 ```tsx
 // file: src/routes/note.tsx
-import { onMount, Show, Suspense } from 'solid-js';
+import { onMount, Show } from 'solid-js';
 import { isServer, NoHydration } from 'solid-js/web';
 import { createAsync, useNavigate } from '@solidjs/router';
 import { Title } from '@solidjs/meta';
 import { hrefToHome, makeTitle } from '../route-path';
 import { getNote } from '../api';
 import { localizeFormat, makeNoteDateFormat } from '../lib/date-time';
-import { NoteEdit, NoteEditSkeleton } from '../components/note-edit';
+import { NoteEdit } from '../components/note-edit';
 import { EditButton } from '../components/edit-button';
-import { NotePreview, NotePreviewSkeleton } from '../components/note-preview';
+import { NotePreview } from '../components/note-preview';
 
 import type { Location, Navigator, RouteSectionProps } from '@solidjs/router';
 import type { Note } from '../types';
@@ -392,16 +395,6 @@ function makeTransformOrNavigate(
   };
 }
 
-const NoteDisplaySkeleton = () => (
-  <div class="c-note-skeleton-display" role="progressbar" aria-busy="true">
-    <div class="c-note-skeleton-display__header">
-      <div class="c-note-skeleton-title" />
-      <div class="c-note-skeleton-display__done" />
-    </div>
-    <NotePreviewSkeleton />
-  </div>
-);
-
 type NoteExpanded = ReturnType<ReturnType<typeof makeTransformOrNavigate>>;
 
 function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
@@ -423,7 +416,7 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
   });
 
   return (
-    <Suspense fallback={<NoteDisplaySkeleton />}>
+    <>
       <Title>{makeTitle(props.noteId)}</Title>
       <div class="c-note">
         <div class="c-note__header">
@@ -440,13 +433,13 @@ function NoteDisplay(props: { noteId: string; note: NoteExpanded }) {
         </div>
         <NotePreview body={ofNote('body')} />
       </div>
-    </Suspense>
+    </>
   );
 }
 
 export type NoteProps = RouteSectionProps & { edit: boolean };
 
-export default function Note(props: NoteProps) {
+function Note(props: NoteProps) {
   const isEdit = () => props.edit;
   const noteId = () => props.params.noteId;
   const navigate = useNavigate();
@@ -461,31 +454,33 @@ export default function Note(props: NoteProps) {
         when={isEdit()}
         fallback={<NoteDisplay noteId={noteId()} note={note()} />}
       >
-        <Suspense fallback={<NoteEditSkeleton />}>
-          <NoteEdit
-            noteId={noteId()}
-            initialTitle={note()?.title}
-            initialBody={note()?.body}
-          />
-        </Suspense>
+        <NoteEdit
+          noteId={noteId()}
+          initialTitle={note()?.title}
+          initialBody={note()?.body}
+        />
       </Show>
     </>
   );
 }
+
+export { Note };
 ```
 
-Another detail to note is the [`NoHydration`](https://www.solidjs.com/guides/server#hydration-script) boundary around the [`<time>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time) element. 
+Another detail to note is the [`<NoHydration>`](https://github.com/solidjs/solid/blob/3212f74db68a526754ce107f1d3e1da0809c4678/CHANGELOG.md#official-partial-hydration-support) boundary around the [`<time>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time) element. 
 The original demo is [overly simplistic](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/Note.js#L57) as it formats the date/time on the server side without giving any consideration to the client's locale.
 
 Granted, for an extended session it would be possible to capture the client's locale as part of the session/authentication information and use that information to correctly format the date on the server. 
 But given that any URL to one of the routes could be used for first load, the server really has no way of initially knowing the correct locale for the date/time as the initial request will not carry any locale information.
 
-All the server can do is initially format the date/time based on the server locale and then have a client script correct it. To this end a `<time>` element is used and the server places the full UTC time in the [`datetime`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time#datetime) attribute.
+All the server can do is initially format the date/time with reference to an [arbitrary locale](src/lib/date-time.ts#L3) and then have a client script correct it. To this end a `<time>` element is used and the server places the full UTC time in the [`datetime`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time#datetime) attribute.
 
 ```TypeScript
 // file: src/lib/date-time.ts
 // …
-export type FormatFn = (epochTimestamp: number) => [local: string, utcIso: string];
+export type FormatFn = (
+	epochTimestamp: number
+) => [local: string, utcIso: string];
 // …
 
 function localizeFormat(
@@ -511,12 +506,12 @@ function localizeFormat(
 export { localizeFormat, makeBriefDateFormat, makeNoteDateFormat };
 ```
 
-When the `NoteDisplay` component is mounted on the client DOM [`onMount`](https://docs.solidjs.com/references/api-reference/lifecycles/onMount) applies `localizeFormat` to acquire the `<time>` element, re-run the (localized) format and replacing the element's [`textContent`](https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent) if necessary. 
+When the `NoteDisplay` component is mounted on the client DOM [`onMount`](https://docs.solidjs.com/reference/lifecycle/on-mount) applies `localizeFormat` to acquire the `<time>` element, re-run the (localized) format and replacing the element's [`textContent`](https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent) if necessary. 
 
 Side note: [`ref`](https://docs.solidjs.com/references/api-reference/special-jsx-attributes/ref)s cannot exist inside a `NoHydration` boundary; this makes it necessary to place the `ref` on a hydrated ancestor element and use the DOM API to acquire any elements within the `NoHydration` boundary.
 
-`transformOrNavigate()` does one of two things based on its `maybeNote` input:
-- if `getNote()` resolves to a `Note` an expanded note (with formatted `updated` (local) and `updatedISO` (UTC, full ISO format) strings) is returned for use by the component JSX.
+`transformOrNavigate()` does one of two things based on its `maybeNote` argument:
+- if `getNote()` resolves to a `Note`, an expanded note (includes formatted `updated` (local) and `updatedISO` (UTC, full ISO format) strings) is returned for use by the component JSX.
 - otherwise the `:noteId` is assumed to be invalid which triggers an immediate navigation to the home route, removing the faulty URL from [`history`](https://developer.mozilla.org/en-US/docs/Web/API/Window/history). 
 
 ## Components
@@ -531,7 +526,7 @@ export type Props = {
   active: boolean;
 };
 
-export default function Spinner(props: Props) {
+function Spinner(props: Props) {
   return (
     <div
       class={'c-spinner' + (props.active ? ' c-spinner--active' : '')}
@@ -540,6 +535,8 @@ export default function Spinner(props: Props) {
     />
   );
 }
+
+export { Spinner };
 ```
 
 ### search-field
@@ -548,7 +545,7 @@ export default function Spinner(props: Props) {
 The purpose of `search-field` is to propagate the input search text to the route URL which consequently triggers all the activities associated with that navigation.
 What is interesting in the original is the use of [`useTransition`](https://react.dev/reference/react/useTransition):
 - the `isPending` value indicates that the triggered activities haven't completed yet.
-- `startTransition` marks all state updates triggered synchronously by the passed `scope` function as part of the “transistion”. More importantly calling `startTransition` before the previous invocation completes [*interrupts*](https://react.dev/reference/react/useTransition#starttransition-caveats) the previous transition in favour of the more recent one.
+- `startTransition` marks all state updates triggered synchronously by the passed `scope` function as part of the “transition”. More importantly calling `startTransition` before the previous invocation completes [*interrupts*](https://react.dev/reference/react/useTransition#starttransition-caveats) the previous transition in favour of the more recent one.
 
 So:
 - `isPending` controls the “busy” spinner
@@ -563,6 +560,9 @@ So:
 > Once the transition completes, everything is ready to synchronously batch update the reactive graph which will then propagate changes to the visible DOM as required.
 >
 > From the *user POV* this means that the visible DOM isn't changed (and is still interactive) while the transition is in progess but the `pending` signal is typically used to alter the UI in some way to indicate that *something* is happening.
+>
+> See also: [**On `Suspense` and `useTransition`**](#on-suspense-and-usetransition)
+
 
 
 ```tsx
@@ -570,7 +570,7 @@ So:
 import { createUniqueId } from 'solid-js';
 import { useIsRouting, useSearchParams } from '@solidjs/router';
 import { debounce } from '../lib/debounce';
-import Spinner from './spinner';
+import { Spinner } from './spinner';
 
 import type { SearchParams } from '../route-path';
 
@@ -595,7 +595,7 @@ const preventSubmit = (
   }
 ) => event.preventDefault();
 
-export default function SearchField() {
+function SearchField() {
   const searchInputId = createUniqueId();
   const isRouting = useIsRouting();
   const [searchParams, setSearchParams] = useSearchParams<SearchParams>();
@@ -616,15 +616,17 @@ export default function SearchField() {
     </form>
   );
 }
+
+export { SearchField };
 ```
 
 In solid-start (with [solid-router](https://github.com/solidjs/solid-router)) the transition is managed by the router.
-It provides [`useIsRouting()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#useisrouting) which exposes the signal needed to activate the spinner.
+It provides [`useIsRouting()`](https://docs.solidjs.com/reference/solid-router/primitives/use-is-routing) which exposes the signal needed to activate the spinner.
 The advantage of this approach is that is that the spinner activates whenever there is a route change, not just when the `search-field` is responsible for the route change.
 
 To minimize frequent, intermediate route changes the input event listener is *debounced* (shamelessly lifted from [solid-primitives](https://github.com/solidjs-community/solid-primitives/blob/70b09201f951ebccf0c932e65c5a957f269e2686/packages/scheduled/src/index.ts#L32-L44)) to delay the route change until there hasn't been a new input for 250ms.
 
-[`useSearchParams()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#usesearchparams) exposes access to the route's [query string](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL#parameters) making it possible to initialize `search-field` from the URL but also granting it the capability to update the route URL and thereby to initiate a route change.
+[`useSearchParams()`](https://docs.solidjs.com/reference/solid-router/primitives/use-search-params) exposes access to the route's [query string](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL#parameters) making it possible to initialize `search-field` from the URL but also granting it the capability to update the route URL (i.e. to initiate a navigation).
 
 [`createUniqueId()`](https://docs.solidjs.com/reference/component-apis/create-unique-id) is used to create a unique ID to correlate the [`<label>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/label#for) to the [`<input>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#id).
 
@@ -635,8 +637,8 @@ To minimize frequent, intermediate route changes the input event listener is *de
 > [!NOTE]
 > [Again](#search-field) the original component wraps its navigation in a [transition](https://react.dev/reference/react/useTransition)—with `solid-start`/`solid-router` that responsibility becomes part of the router's navigation functionality.
 
-The `kind` prop determines whether the button navigates to the [update note route](#note) or the [new note route](#note-new). [`useLocation()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#uselocation) provides access to the currrent URL which is used as the basis to generate the URL to navigate to.
-Navigation is accessed through [`useNavigate()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#usenavigate).
+The `kind` prop determines whether the button navigates to the [update note route](#note) or the [new note route](#note-new). [`useLocation()`](https://docs.solidjs.com/reference/solid-router/primitives/use-location) provides access to the currrent URL which is used as the basis to generate the URL to navigate to.
+Navigation is accessed through [`useNavigate()`](https://docs.solidjs.com/reference/solid-router/primitives/use-navigate).
 
 ```TypeScript
 // file: src/components/edit-button.tsx
@@ -700,7 +702,7 @@ import {
   type ParentProps,
 } from 'solid-js';
 
-export type LastEdit = ['new'] | ['edit', string] | ['delete', string];
+export type LastEdit = ['new'] | ['update', string] | ['delete', string];
 
 // Primitives over features …
 const [lastEdit, sendLastEdit] = createSignal<LastEdit | undefined>(undefined, {
@@ -759,7 +761,7 @@ Whenever the `title` changes between re-renders, an effect triggers a CSS animat
 Component state tracks the expansion status of the content; clicking the toggle `<button>` expands and collapses the `expandedChildren` prop which contains the rendered note excerpt/summary.
 - [`NoteListSkeleton.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteListSkeleton.js) serves as the fallback for the [suspense boundary](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/App.js#L38) around `NoteList`.
 
-Within `brief-list` the exclusive server side functionality is accessed via `getBriefs`:
+Within `brief-list` functionality exclusive to the server side is accessed via `getBriefs`:
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -783,10 +785,10 @@ import type { NoteBrief, Note } from './types';
 // …
 const NAME_GET_BRIEFS = 'briefs';
 // …
-const getBriefs = cache<
-  (search: string | undefined) => Promise<NoteBrief[]>,
-  Promise<NoteBrief[]>
->(async (search: string | undefined) => getBf(search), NAME_GET_BRIEFS);
+const getBriefs = cache<(search: string | undefined) => Promise<NoteBrief[]>>(
+  async (search: string | undefined) => getBf(search),
+  NAME_GET_BRIEFS
+);
 
 // …
 ```
@@ -799,7 +801,6 @@ The code that runs on the server:
 ```TypeScript
 // file: src/server/api.ts
 'use server';
-
 import {
   deleteNote as deleteNoteById,
   insertNote,
@@ -851,8 +852,8 @@ function BriefList(props: Props) {
                   title={brief.title}
                   summary={brief.summary}
                   updatedAt={brief.updatedAt}
-                  active={activeId() === brief.id}
-                  pending={false}
+                  active={noteId() === brief.id}
+                  pending={pendingId() === brief.id}
                   flushed={updatedId() === brief.id}
                   format={format}
                 />
@@ -899,7 +900,7 @@ function BriefList(props: Props) {
 }
 ```
 
-[`createAsync()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#createasync) creates an “asynchronous to reactive (i.e. synchronous)” value boundary which is necessary to leverage a [`cache()`](https://github.com/solidjs/solid-router?tab=readme-ov-file#cache) wrapped asynchrounous remote accessor. 
+[`createAsync()`](https://docs.solidjs.com/reference/solid-router/data-apis/create-async) creates an “asynchronous to reactive (i.e. synchronous)” value boundary which is necessary to leverage a [`cache()`](https://docs.solidjs.com/reference/solid-router/data-apis/cache) wrapped asynchrounous remote accessor. 
 
 `createAsync()` only returns a (signal) accessor but given that updates occur by “remote list” lacking any referential stability, the use of a [store](https://docs.solidjs.com/reference/stores/using-stores#createstore) in combination with [`reconcile`](https://docs.solidjs.com/reference/stores/store-utilities#reconcile) is indicated.
 
@@ -925,7 +926,8 @@ const EmptyContent = (props: { search: string | undefined }) => (
 
 The details of each `NoteBrief` render is delegated to the `Brief` component, however three additional props are passed: `active`, `flushed`, and `format`.
 
-`format` is created on the `brief-list` level and then shared across all `brief`s to avoid repeatedly creating the same data/time formatting function. When rendering on the server, the `en-GB` locale and UTC is used; however later on the client side this is replaced with the client's preferred formatting within `brief`. 
+`format` is created on the `brief-list` level and then shared across all `brief`s to avoid repeatedly creating the same data/time formatting function.
+When rendering on the server, the [`en-GB` locale and UTC](src/lib/date-time.ts#L3) is used; however later on the client side this is replaced with the client's preferred formatting within `brief`. 
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -958,7 +960,9 @@ function BriefList(props: Props) {
 // …
 ```
 
-A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route. Given that the route is *driven* by `brief-list` it can change the active note ID even *before* the route transition. 
+A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route.
+
+Given that the route is *driven* by `brief-list` it can change the active note ID even *before* the route transition. 
 So rather than having the clicked `brief` perform the navigation, the functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation) (making it unnecessary to pass each `brief` a separate prop for navigation).
 
 ```TypeScript
@@ -972,7 +976,7 @@ import {
   useParams,
 } from '@solidjs/router';
 // …
-import { hrefWithNote } from '../route-path';
+import { nextToNote } from '../route-path';
 // …
 
 function findNoteId(target: unknown) {
@@ -992,6 +996,39 @@ function findNoteId(target: unknown) {
 }
 
 // …
+function deriveLastUpdateId(
+  noteId: () => string,
+  lastEdit: LastEditHolder['lastEdit']
+) {
+  const NO_UPDATED_ID = '';
+
+  return () => {
+    const last = lastEdit();
+    switch (last?.[0]) {
+      case undefined:
+      case 'delete': {
+        return NO_UPDATED_ID;
+      }
+      case 'update': {
+        return last[1];
+      }
+      case 'new': {
+        // IDs are server assigned so get it form the URL
+        // of the currently open note.
+        const id = noteId();
+        return typeof id === 'string' && id.length > 0 ? id : NO_UPDATED_ID;
+      }
+      default:
+        return NO_UPDATED_ID;
+    }
+  };
+}
+
+type ClickedInfo = {
+  noteId: string;
+  pathname: string;
+};
+
 type Props = {
   searchText: string | undefined;
 };
@@ -999,36 +1036,30 @@ type Props = {
 function BriefList(props: Props) {
   const params = useParams();
   const noteId = () => params.noteId ?? '';
-  const [clickedId, setClickedId] = createSignal<[string, number]>(['', 0]);
+  const location = useLocation();
+  const [clickedInfo, setClickedInfo] = createSignal<ClickedInfo>({
+    noteId: noteId(),
+    pathname: location.pathname,
+  });
+  const pendingId = createMemo(() =>
+    clickedInfo().pathname !== location.pathname ? clickedInfo().noteId : ''
+  );
 
   // Highlight clicked brief BEFORE initiating
   // navigation to the associated note
   const navigate = useNavigate();
-  const location = useLocation();
   const navigateToClicked = (event: MouseEvent) => {
     const id = findNoteId(event.target);
     if (!id) return;
 
-    setClickedId([id, performance.now()]);
-    navigate(hrefWithNote(location, id));
+    const next = nextToNote(location, id);
+    setClickedInfo({ noteId: id, pathname: next.pathname });
+    navigate(next.href);
   };
 
-  // Choose the most recent of
-  // - ID of note navigated to
-  // - ID of brief clicked
-  const active = createMemo<[string, number]>(
-    (last) => {
-      const navId = noteId();
-      const [_id, lastTime] = last;
-      const clicked = clickedId();
-      return clicked[1] > lastTime ? clicked : [navId, performance.now()];
-    },
-    [params.noteId ?? '', performance.now()]
-  );
-
-  // Active ID is the one navigated to
-  // until another brief is clicked
-  const activeId = () => active()[0];
+  // updatedId
+  const { lastEdit } = useLastEdit();
+  const updatedId = createMemo(deriveLastUpdateId(noteId, lastEdit));
 
   // … 
   let root: HTMLElement | undefined;
@@ -1041,6 +1072,7 @@ function BriefList(props: Props) {
 
 // … 
 ```
+**Continue Overhaul From Here**
 
 `clickedId` is the accessor that tracks the last clicked brief as a pair consisting of the note ID and the time elasped since [`performance.timeOrigin`](https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin). 
 The signal is set by the `navigateToClicked` event listener that is mounted on the `root` element (a `<nav>`) of the component.

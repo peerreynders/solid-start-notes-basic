@@ -2,7 +2,7 @@
 import { createUniqueId } from 'solid-js';
 import { useIsRouting, useSearchParams } from '@solidjs/router';
 import { debounce } from '../lib/debounce';
-import Spinner from './spinner';
+import { Spinner } from './spinner';
 
 import type { SearchParams } from '../route-path';
 

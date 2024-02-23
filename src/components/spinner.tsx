@@ -3,7 +3,7 @@ export type Props = {
 	active: boolean;
 };
 
-export default function Spinner(props: Props) {
+function Spinner(props: Props) {
 	return (
 		<div
 			class={'c-spinner' + (props.active ? ' c-spinner--active' : '')}
@@ -12,3 +12,5 @@ export default function Spinner(props: Props) {
 		/>
 	);
 }
+
+export { Spinner };
