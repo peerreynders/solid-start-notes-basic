@@ -3,29 +3,26 @@ import { createUniqueId, onMount, Show } from 'solid-js';
 import { NoHydration } from 'solid-js/web';
 import { localizeFormat, type FormatFn } from '../lib/date-time';
 
+export type Active = 0 | 1 | 2;
+
 type Props = {
 	noteId: string;
 	title: string;
 	summary: string;
 	updatedAt: number;
-	pending: boolean;
-	active: boolean;
+	active: Active;
 	flushed: boolean;
 	format: FormatFn;
 };
 
-const CLASSNAME_FLASH = 'js:c-brief--flash';
+const CLASSNAME_FLASH = ' js:c-brief--flash';
+const activeModifier = ['', ' c-brief--pending', ' c-brief--active'];
 
 const classListBrief = (flushed: boolean) =>
-	'js:c-brief c-brief' + (flushed ? ' ' + CLASSNAME_FLASH : '');
+	'js:c-brief c-brief ' + (flushed ? CLASSNAME_FLASH : '');
 
-const classListOpen = (
-	active: boolean | undefined,
-	pending: boolean | undefined
-) =>
-	'js:c-brief__open c-brief__open' +
-	(active ? ' c-brief--active' : '') +
-	(pending ? ' c-brief--pending' : '');
+const classListOpen = (active: Active) =>
+	'js:c-brief__open c-brief__open' + activeModifier[active];
 
 function Brief(props: Props) {
 	let brief: HTMLDivElement | undefined;
@@ -61,9 +58,7 @@ function Brief(props: Props) {
 				</NoHydration>
 			</header>
 			<input id={toggleId} type="checkbox" class="c-brief__summary-state" />
-			<button class={classListOpen(props.active, props.pending)}>
-				Open note for preview
-			</button>
+			<button class={classListOpen(props.active)}>Open note for preview</button>
 			<label for={toggleId} class="c-brief__summary-toggle">
 				<svg
 					viewBox="0 0 512 512"

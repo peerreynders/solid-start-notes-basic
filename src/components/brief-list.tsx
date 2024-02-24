@@ -11,7 +11,7 @@ import {
 import { getBriefs } from '../api';
 import { nextToNote } from '../route-path';
 import { makeBriefDateFormat } from '../lib/date-time';
-import { Brief } from './brief';
+import { Brief, type Active } from './brief';
 import { useLastEdit, type LastEditHolder } from './app-context';
 
 import type { NoteBrief } from '../types';
@@ -90,6 +90,9 @@ function deriveLastUpdateId(
 	};
 }
 
+const briefActive = ([id, active]: [string, Active], briefId: string) =>
+	id === briefId ? active : 0;
+
 type ClickedInfo = {
 	noteId: string;
 	pathname: string;
@@ -107,9 +110,15 @@ function BriefList(props: Props) {
 		noteId: noteId(),
 		pathname: location.pathname,
 	});
-	const pendingId = createMemo(() =>
-		clickedInfo().pathname !== location.pathname ? clickedInfo().noteId : ''
-	);
+
+	const activeInfo = createMemo((): [string, Active] => {
+		const info = clickedInfo();
+		if (location.pathname !== info.pathname && info.noteId.length > 0)
+			return [info.noteId, 1];
+
+		const id = noteId();
+		return id.length > 0 ? [id, 2] : ['', 0];
+	});
 
 	// Highlight clicked brief BEFORE initiating
 	// navigation to the associated note
@@ -152,8 +161,7 @@ function BriefList(props: Props) {
 									title={brief.title}
 									summary={brief.summary}
 									updatedAt={brief.updatedAt}
-									active={noteId() === brief.id}
-									pending={pendingId() === brief.id}
+									active={briefActive(activeInfo(), brief.id)}
 									flushed={updatedId() === brief.id}
 									format={format}
 								/>

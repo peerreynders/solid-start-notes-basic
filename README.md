@@ -479,7 +479,7 @@ All the server can do is initially format the date/time with reference to an [ar
 // file: src/lib/date-time.ts
 // …
 export type FormatFn = (
-	epochTimestamp: number
+  epochTimestamp: number
 ) => [local: string, utcIso: string];
 // …
 
@@ -852,8 +852,7 @@ function BriefList(props: Props) {
                   title={brief.title}
                   summary={brief.summary}
                   updatedAt={brief.updatedAt}
-                  active={noteId() === brief.id}
-                  pending={pendingId() === brief.id}
+                  active={briefActive(activeInfo(), brief.id)}
                   flushed={updatedId() === brief.id}
                   format={format}
                 />
@@ -960,10 +959,11 @@ function BriefList(props: Props) {
 // …
 ```
 
-A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed by the route.
+A `brief`'s `active` prop informs it whether or not its associated `Note` is currently being displayed or being navigated to.
 
-Given that the route is *driven* by `brief-list` it can change the active note ID even *before* the route transition. 
-So rather than having the clicked `brief` perform the navigation, the functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation) (making it unnecessary to pass each `brief` a separate prop for navigation).
+Given that the route is *driven* by `brief-list` the note ID enters the “pending” state *before* the route transition.
+Once the route transition is complete that note ID enters the “active” state.  
+The navigation functionality is hoisted up into `brief-list` by using DOM [event delegation](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#event_delegation); a `Brief` simply communicates which note it represents via its `data-note-id` [data attribute](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset).
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -977,6 +977,8 @@ import {
 } from '@solidjs/router';
 // …
 import { nextToNote } from '../route-path';
+// …
+import { Brief, type Active } from './brief';
 // …
 
 function findNoteId(target: unknown) {
@@ -996,33 +998,8 @@ function findNoteId(target: unknown) {
 }
 
 // …
-function deriveLastUpdateId(
-  noteId: () => string,
-  lastEdit: LastEditHolder['lastEdit']
-) {
-  const NO_UPDATED_ID = '';
-
-  return () => {
-    const last = lastEdit();
-    switch (last?.[0]) {
-      case undefined:
-      case 'delete': {
-        return NO_UPDATED_ID;
-      }
-      case 'update': {
-        return last[1];
-      }
-      case 'new': {
-        // IDs are server assigned so get it form the URL
-        // of the currently open note.
-        const id = noteId();
-        return typeof id === 'string' && id.length > 0 ? id : NO_UPDATED_ID;
-      }
-      default:
-        return NO_UPDATED_ID;
-    }
-  };
-}
+const briefActive = ([id, active]: [string, Active], briefId: string) =>
+  id === briefId ? active : 0;
 
 type ClickedInfo = {
   noteId: string;
@@ -1041,9 +1018,15 @@ function BriefList(props: Props) {
     noteId: noteId(),
     pathname: location.pathname,
   });
-  const pendingId = createMemo(() =>
-    clickedInfo().pathname !== location.pathname ? clickedInfo().noteId : ''
-  );
+
+  const activeInfo = createMemo((): [string, Active] => {
+    const info = clickedInfo();
+    if (location.pathname !== info.pathname && info.noteId.length > 0)
+      return [info.noteId, 1];
+
+    const id = noteId();
+    return id.length > 0 ? [id, 2] : ['', 0];
+  });
 
   // Highlight clicked brief BEFORE initiating
   // navigation to the associated note
@@ -1056,11 +1039,7 @@ function BriefList(props: Props) {
     setClickedInfo({ noteId: id, pathname: next.pathname });
     navigate(next.href);
   };
-
-  // updatedId
-  const { lastEdit } = useLastEdit();
-  const updatedId = createMemo(deriveLastUpdateId(noteId, lastEdit));
-
+ 
   // … 
   let root: HTMLElement | undefined;
   onMount(() => {
@@ -1072,21 +1051,23 @@ function BriefList(props: Props) {
 
 // … 
 ```
-**Continue Overhaul From Here**
+The *currently active* `noteId` is delivered via the route [parameters](https://docs.solidjs.com/reference/solid-router/primitives/use-params). 
+The `noteId` [derived signal](https://docs.solidjs.com/concepts/derived-values/derived-signals) ensures a string type (empty string instead of `undefined`).
 
-`clickedId` is the accessor that tracks the last clicked brief as a pair consisting of the note ID and the time elasped since [`performance.timeOrigin`](https://developer.mozilla.org/en-US/docs/Web/API/Performance/timeOrigin). 
-The signal is set by the `navigateToClicked` event listener that is mounted on the `root` element (a `<nav>`) of the component.
-The listener extracts the note ID from the clicked `brief`'s `data-note-id` [data attribute](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset), updates `clickedId` and triggers the necessary navigation.
+The `clickedInfo` accessor pair tracks the ID of the last clicked brief together with its destination pathname.
+`clickedInfo` is updated by the `navigateToClicked` event listener that is mounted on the `root` element (a `<nav>`) of the `brief-list` component.
+The listener extracts the note ID from the clicked `brief`'s `data-note-id` [data attribute](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset) and sets the `[noteId, pathname]` pair before it [navigates](https://docs.solidjs.com/reference/solid-router/primitives/use-navigate) to the note.
 
+`activeInfo`'s derivation function returns a `[noteId, state]` pair.
+The first element holds the `noteId` or an empty string when the second element (`state`) is `0` (no note is “pending” or “active”): 
+- `1` indicates that navigation to `noteId` is “pending”. 
+- `2` appears once the navigation to `noteId` completes making it “active”.
 
-The `active` [`memo`](https://docs.solidjs.com/reference/basic-reactivity/create-memo) coordinates selecting the most recent of two reactive values: `clickedId` and route `params.noteId`.
-It's initialized to the route `params.noteId` (coupled with [`performance.now()`](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)) and re-evaluates when either reactive value changes.
+When the current [`location.pathname`](https://docs.solidjs.com/reference/solid-router/primitives/use-location) doesn't match the `clickedInfo` destination pathname while `clickedInfo.noteId` is non-empty then *that* `noteId` is “pending” (`[noteId, 1]`).
+Otherwise a non-empty `noteId()` results in a `[noteId, 2]` (“active”) value. 
+`['', 0]` indicates that *no* `noteId` is “pending” or “active”.
 
-If the `clickedId` timestamp is more recent than the previously memoized value it's assumed that `clickedId` holds the most recent change and carries the most up-to-date `noteId` which is then accepted as the current value. Otherwise it's assumed that `params.noteId` is more current and used to create the most up-to-date value.
-
-Finally `activeId()` is implemented as a [derived signal](https://docs.solidjs.com/concepts/derived-values/derived-signals) that extracts the `noteId` from the `active()` pair. Within the confines of reactive JSX `activeId() === brief.id` then identifies the active brief, turning off (on) whenever another (the) brief is clicked.
-
-Each `brief`'s `flush` prop is provided with the help of [`useLastEdit()`](#app-context).
+`updatedId` drives the `flush` prop on the listed briefs and derives from [`useLastEdit()`](#app-context) and `notesId()`
 
 ```TypeScript
 // file: src/components/brief-list.tsx
@@ -1100,7 +1081,6 @@ import {
 // …
 import { useLastEdit, type LastEditHolder } from './app-context';
 // …
-
 function deriveLastUpdateId(
   noteId: () => string,
   lastEdit: LastEditHolder['lastEdit']
@@ -1128,6 +1108,7 @@ function deriveLastUpdateId(
     }
   };
 }
+// …
 
 type Props = {
   searchText: string | undefined;
@@ -1157,7 +1138,7 @@ Initially when the new `Note` is sent to the server `params.noteId` won't have a
 But because the reactive value was referenced the derivation will run again once `params.noteId` has been set to the new `Note`'s ID due to the navigaton that was triggered by saving the new `Note`.
 So in the end `updatedId()` will hold the ID of the new `Note` (after briefly being an empty string). 
 
-Within (reactive) JSX `updatedId() === brief.id` indicates to a brief on the list whether it has been recently `flushed`; on the leading edge of the property being set the `brief` can initiate a CSS “flash” animation.
+Within (reactive) JSX `updatedId() === brief.id` indicates to a brief on the list whether it has been recently `flushed`; on the leading edge of the property being set the `Brief` can initiate a CSS “flash” animation.
 
 ### brief
 
@@ -1180,29 +1161,26 @@ import { createUniqueId, onMount, Show } from 'solid-js';
 import { NoHydration } from 'solid-js/web';
 import { localizeFormat, type FormatFn } from '../lib/date-time';
 
+export type Active = 0 | 1 | 2;
+
 type Props = {
   noteId: string;
   title: string;
   summary: string;
   updatedAt: number;
-  pending: boolean;
-  active: boolean;
+  active: Active;
   flushed: boolean;
   format: FormatFn;
 };
 
-const CLASSNAME_FLASH = 'js:c-brief--flash';
+const CLASSNAME_FLASH = ' js:c-brief--flash';
+const activeModifier = ['', ' c-brief--pending', ' c-brief--active'];
 
 const classListBrief = (flushed: boolean) =>
-  'js:c-brief c-brief' + (flushed ? ' ' + CLASSNAME_FLASH : '');
+  'js:c-brief c-brief ' + (flushed ? CLASSNAME_FLASH : '');
 
-const classListOpen = (
-  active: boolean | undefined,
-  pending: boolean | undefined
-) =>
-  'js:c-brief__open c-brief__open' +
-  (active ? ' c-brief--active' : '') +
-  (pending ? ' c-brief--pending' : '');
+const classListOpen = (active: Active) =>
+  'js:c-brief__open c-brief__open' + activeModifier[active];
 
 function Brief(props: Props) {
   let brief: HTMLDivElement | undefined;
@@ -1238,9 +1216,7 @@ function Brief(props: Props) {
         </NoHydration>
       </header>
       <input id={toggleId} type="checkbox" class="c-brief__summary-state" />
-      <button class={classListOpen(props.active, props.pending)}>
-        Open note for preview
-      </button>
+      <button class={classListOpen(props.active)}>Open note for preview</button>
       <label for={toggleId} class="c-brief__summary-toggle">
         <svg
           viewBox="0 0 512 512"
@@ -1266,6 +1242,14 @@ function Brief(props: Props) {
 
 export { Brief };
 ```
+
+`classListBrief` assembles the class names for the `Brief`'s container `<div>`. 
+The flash animation is triggered by the `Brief`'s `flush` prop.
+The `removeFlash` listener is added to the element's [`animationend`](https://developer.mozilla.org/en-US/docs/Web/API/Element/animationend_event) event to remove the triggering class name once the animation completes. 
+
+`classListOpen` assembles the class names for the "open note" button. The button itself is the `Brief`'s background which communicates a “pending” or “active” state. The `active` argument selects the appropriate “pending” or “active” [modifier](https://getbem.com/naming/#modifier).
+
+The `updatedAt` time is adjusted to the client locale in a similar fashion as discussed with the [`note`](#note) component.
 
 ### note-preview
 
