@@ -1,7 +1,7 @@
 // file: src/components/note-edit.tsx
 import { createSignal, Show } from 'solid-js';
 import { useLocation } from '@solidjs/router';
-import { NotePreview, NotePreviewSkeleton } from './note-preview';
+import { NotePreview } from './note-preview';
 import { useSendLastEdit } from './app-context';
 import { editAction } from '../api';
 import { toRootpath } from '../route-path';
@@ -13,23 +13,6 @@ type Props = {
 	initialTitle: string | undefined;
 	initialBody: string | undefined;
 };
-
-const NoteEditSkeleton = () => (
-	<div class="c-note-skeleton-edit" role="progressbar" aria-busy="true">
-		<div class="c-note-skeleton-edit__form">
-			<div class="c-note-skeleton-edit__title" />
-			<div class="c-note-skeleton-edit__body" />
-		</div>
-		<div class="c-note-skeleton-edit__preview">
-			<div class="c-note-skeleton-edit__menu">
-				<div class="c-note-skeleton-edit__done" />
-				<div class="c-note-skeleton-edit__delete" />
-			</div>
-			<div class="c-note-skeleton-title" />
-			<NotePreviewSkeleton />
-		</div>
-	</div>
-);
 
 const maybeNoteId = (maybe: string | undefined) =>
 	typeof maybe === 'string' && maybe.length > 0 ? maybe : undefined;
@@ -192,4 +175,4 @@ function NoteEdit(props: Props) {
 	);
 }
 
-export { NoteEdit, NoteEditSkeleton };
+export { NoteEdit };

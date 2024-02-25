@@ -1,4 +1,18 @@
+// file: src/entry-server.tsx
 import { createHandler, StartServer } from '@solidjs/start/server';
+// See: src/lib/md-to-html.ts
+import { mdToHtml } from './server/md-to-html';
+
+declare global {
+	// eslint-disable-next-line no-var
+	var ssrSupport: {
+		mdToHtml: (mdText: string) => string;
+	};
+}
+
+globalThis.ssrSupport = {
+	mdToHtml,
+};
 
 export default createHandler(() => (
 	<StartServer

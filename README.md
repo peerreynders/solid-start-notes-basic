@@ -1253,4 +1253,87 @@ The `updatedAt` time is adjusted to the client locale in a similar fashion as di
 
 ### note-preview
 
+The `note-preview` takes the passed `body` prop containing markdown text and transforms it to HTML, placing it into the `<div>` container ([`innerHTML`](https://docs.solidjs.com/reference/jsx-attributes/innerhtml-or-textcontent)); 
+
+```tsx
+// file: src/components/note-preview.tsx
+import { mdToHtml } from '../lib/md-to-html';
+
+type Props = {
+  body: string;
+};
+
+const NotePreview = (props: Props) => (
+  <div class="c-note-preview">
+    <div
+      class="o-from-markdown"
+      innerHTML={props.body ? mdToHtml(props.body) : ''}
+    />
+  </div>
+);
+
+export { NotePreview };
+```
+
+[!NOTE]
+Server side HTML sanitation is performed by [`sanitize-html`](https://github.com/apostrophecms/sanitize-html) which doesn't need DOM support. Unfortunately when used on the client side with Vite, the PostCSS dependency causes [issues](https://github.com/apostrophecms/sanitize-html/issues/639#issuecomment-1856695165). On the client side [DOMPurify](https://github.com/cure53/DOMPurify) works but would require (slow) JSDOM on the server side.
+
+This creates the requirement of using `sanitize-html` on the server side for SSR while keeping it out of the client side bundle (where `DOMPurify` is used). 
+Therefore components using `mdToHtml` import `src/lib/md-to-html`: 
+
+```TypeScript
+// file: src/lib/md-to-html.ts
+import { isServer } from 'solid-js/web';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+let toHtml: ((mdText: string) => string) | undefined;
+
+function mdToHtml(mdText: string) {
+  if (toHtml) return toHtml(mdText);
+
+  // entry-server.tsx attaches mdToHtml based on sanitizeHtml
+  // which doesn't require DOM for SSR.
+  toHtml = isServer
+    ? globalThis.ssrSupport.mdToHtml
+    : (mdArg: string) =>
+        DOMPurify.sanitize(marked.parse(mdArg, { async: false }) as string);
+  // Vite pulls in node APIs due to sanitizeHtml's optional postCSS support
+  // On client side use DOMPurify instead but don't import HERE to keep `sanitizeHtml`
+  // out of the client bundle
+
+  if (!toHtml) throw new Error('Late binding of `mdToHtml` failed');
+  return mdToHtml(mdText);
+}
+
+export { mdToHtml };
+```
+
+While `DOMPurify` is unconditionally imported, on the server `globalThis.ssrSupport.mdToHtml` is used instead.
+This run time dependency is imported and set by `src/entry-server.tsx`:
+
+```tsx
+// file: src/entry-server.tsx
+import { createHandler, StartServer } from '@solidjs/start/server';
+// See: src/lib/md-to-html.ts
+import { mdToHtml } from './server/md-to-html';
+
+declare global {
+  // eslint-disable-next-line no-var  
+  var ssrSupport: {
+    mdToHtml: (mdText: string) => string;
+  };
+}
+
+globalThis.ssrSupport = {
+  mdToHtml,
+};
+
+export default createHandler(() => (
+  // …
+));
+```
+
+### note-edit
+
 … to be continued.

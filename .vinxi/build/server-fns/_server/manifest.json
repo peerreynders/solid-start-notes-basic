@@ -1,0 +1,28 @@
+{
+  "\u0000virtual:#vinxi/handler/server-fns.css": {
+    "file": "assets/server-fns-83fd3340.css",
+    "src": "\u0000virtual:#vinxi/handler/server-fns.css"
+  },
+  "_api.js": {
+    "file": "api.js"
+  },
+  "src/server/api.ts": {
+    "file": "c_6666.js",
+    "imports": [
+      "_api.js"
+    ],
+    "isEntry": true,
+    "src": "src/server/api.ts"
+  },
+  "virtual:#vinxi/handler/server-fns": {
+    "css": [
+      "assets/server-fns-83fd3340.css"
+    ],
+    "file": "entry.js",
+    "imports": [
+      "_api.js"
+    ],
+    "isEntry": true,
+    "src": "virtual:#vinxi/handler/server-fns"
+  }
+}
