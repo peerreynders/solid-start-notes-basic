@@ -2,6 +2,7 @@ esb-run.mjs
 /.data
 dist
 .solid
+.vinxi
 .output
 .vercel
 .netlify
