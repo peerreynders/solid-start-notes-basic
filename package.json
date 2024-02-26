@@ -14,12 +14,12 @@
   "dependencies": {
     "@solidjs/meta": "^0.29.3",
     "@solidjs/router": "^0.12.4",
-    "@solidjs/start": "^0.5.9",
+    "@solidjs/start": "^0.5.10",
     "dompurify": "^3.0.9",
     "marked": "^12.0.0",
-    "nanoid": "^5.0.5",
+    "nanoid": "^5.0.6",
     "rxjs": "8.0.0-alpha.14",
-    "sanitize-html": "^2.12.0",
+    "sanitize-html": "^2.12.1",
     "solid-js": "^1.8.15",
     "unstorage": "^1.10.1",
     "vinxi": "^0.2.1"

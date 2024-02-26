@@ -8,7 +8,7 @@
 
 — [What Comes After GraphQL?](https://youtu.be/gfKrdN1RzoI?t=14516)
 
-Updated for SolidStart v0.5.9 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
+Updated for SolidStart v0.5.10 (new beta, [first beta version](https://github.com/peerreynders/solid-start-notes-basic/tree/2fe3462b30ab9008576339648f13d9457da3ff5f)). 
 The app is a port of the December 2020 [React Server Components Demo](https://github.com/reactjs/server-components-demo) ([LICENSE](https://github.com/reactjs/server-components-demo/blob/main/LICENSE); [no pg fork](https://github.com/pomber/server-components-demo/), [Data Fetching with React Server Components](https://youtu.be/TQQPAU21ZUw)) but here it's just a basic client side routing implementation.
 It doesn't use a database but stores the notes via the [Unstorage Node.js Filesystem (Lite) driver](https://unstorage.unjs.io/drivers/fs#nodejs-filesystem-lite) . This app is not intended to be deployed but simply serves as an experimental platform.
 
@@ -158,7 +158,6 @@ interface RouteSectionProps<T = unknown> {
 The orignal demo's layout is found in [`App.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/App.js) (server component) which **here** maps to [`app.tsx`](src/app.tsx) as
 
 <img src="docs/assets/layout.jpg" alt="Top-level layout" width="720">
-
 
 - `search-field.tsx` holds the text to match against the titles of the existing notes.
 - `edit-bottom.tsx` triggers the opening of `note-new.tsx` in the `children` area
@@ -1253,7 +1252,7 @@ The `updatedAt` time is adjusted to the client locale in a similar fashion as di
 
 ### note-preview
 
-The `note-preview` takes the passed `body` prop containing markdown text and transforms it to HTML, placing it into the `<div>` container ([`innerHTML`](https://docs.solidjs.com/reference/jsx-attributes/innerhtml-or-textcontent)); 
+(Original components [`NotePreview.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NotePreview.js), [`TextWithMarkdown.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/TextWithMarkdown.js).) The `note-preview` takes the passed `body` prop containing markdown text and transforms it to HTML, placing it into the `<div>` container ([`innerHTML`](https://docs.solidjs.com/reference/jsx-attributes/innerhtml-or-textcontent)); 
 
 ```tsx
 // file: src/components/note-preview.tsx
@@ -1275,8 +1274,10 @@ const NotePreview = (props: Props) => (
 export { NotePreview };
 ```
 
-[!NOTE]
-Server side HTML sanitation is performed by [`sanitize-html`](https://github.com/apostrophecms/sanitize-html) which doesn't need DOM support. Unfortunately when used on the client side with Vite, the PostCSS dependency causes [issues](https://github.com/apostrophecms/sanitize-html/issues/639#issuecomment-1856695165). On the client side [DOMPurify](https://github.com/cure53/DOMPurify) works but would require (slow) JSDOM on the server side.
+> [!NOTE]
+Server side HTML sanitation is performed by [`sanitize-html`](https://github.com/apostrophecms/sanitize-html) which doesn't need DOM support. 
+Unfortunately when used on the client side with Vite, the PostCSS dependency causes [issues](https://github.com/apostrophecms/sanitize-html/issues/639#issuecomment-1856695165).
+On the client side [DOMPurify](https://github.com/cure53/DOMPurify) works but would require (slow) JSDOM on the server side.
 
 This creates the requirement of using `sanitize-html` on the server side for SSR while keeping it out of the client side bundle (where `DOMPurify` is used). 
 Therefore components using `mdToHtml` import `src/lib/md-to-html`: 
@@ -1310,7 +1311,7 @@ export { mdToHtml };
 ```
 
 While `DOMPurify` is unconditionally imported, on the server `globalThis.ssrSupport.mdToHtml` is used instead.
-This run time dependency is imported and set by `src/entry-server.tsx`:
+This run time dependency is imported and set **only** by `src/entry-server.tsx`:
 
 ```tsx
 // file: src/entry-server.tsx
@@ -1336,4 +1337,120 @@ export default createHandler(() => (
 
 ### note-edit
 
+(Original client component [`NoteEditor.js`](https://github.com/reactjs/server-components-demo/blob/95fcac10102d20722af60506af3b785b557c5fd7/src/NoteEditor.js).) The `note-edit` component is used create a new note and modify an existing note.
+
+<img src="docs/assets/note-edit.jpg" alt="note-edit component" width="720">
+
+The `noteId` prop is `undefined` for a new note and a non-empty string with the note's ID for an existing note.
+A form contains a text input to allow editing of the note time and a textarea for the note body.   
+It also contains some hidden inputs containing supplementary information for the `edit action`:
+- `id`: contains the note ID for an existiing note or empty string for a new note
+- `from`: the current route URL. The route navigated to derives from this value,
+- `intent`: 
+  - `new`: create a new note
+  - `update`: modify existing note identified by `id`
+  - `delete`: delete existing note identified by `id`
+
+The preview portion consists of a menu, label, preview note title and `note-preview` handling the note body.
+The menu contains a “Done” button and for `update` edits a “Delete” button.  
+
+```tsx
+// file: src/components/note-edit.tsx
+// …
+import { NotePreview } from './note-preview';
+import { editAction } from '../api';
+// …
+import { toRootpath } from '../route-path';
+
+// …
+
+type Props = {
+  noteId: string | undefined;
+  initialTitle: string | undefined;
+  initialBody: string | undefined;
+};
+
+// …
+
+function NoteEdit(props: Props) {
+  // …
+
+  return (
+    <div class="c-note-edit">
+      <form
+        ref={noteForm}
+        class="c-note-edit__form"
+        method="post"
+        action={editAction}
+      >
+        <input type="hidden" name="id" value={props.noteId ?? ''} />
+        <input type="hidden" name="from" value={toRootpath(location)} />
+        <input type="hidden" name="intent" value={intent()} />
+        <label class="u-offscreen" for="note-edit__title">
+          Enter a title for your note
+        </label>
+        <input
+          id="note-edit__title"
+          type="text"
+          name="title"
+          value={title()}
+          onInput={titleListener}
+        />
+        <label class="u-offscreen" for="note-edit__body">
+          Enter the body for your note
+        </label>
+        <textarea
+          id="note-edit__body"
+          name="body"
+          value={body()}
+          onInput={bodyListener}
+        />
+      </form>
+      <div class="c-note-edit__preview">
+        <div class="c-note-edit__menu" role="menubar">
+          <button
+            class="c-note-edit__done"
+            role="menuitem"
+            disabled={busy()}
+            onClick={saveNote}
+          >
+            <img
+              src="/checkmark.svg"
+              width="14px"
+              height="10px"
+              alt=""
+              role="presentation"
+            />
+            Done
+          </button>
+          <Show when={isUpdate()}>
+            <button
+              class="c-note-edit__delete"
+              role="menuitem"
+              disabled={busy()}
+              onClick={deleteNote}
+            >
+              <img
+                src="/cross.svg"
+                width="10px"
+                height="10px"
+                alt=""
+                role="presentation"
+              />
+              Delete
+            </button>
+          </Show>
+        </div>
+        <div class="c-note-edit__label-preview" role="status">
+          Preview
+        </div>
+        <h1 class="c-note-edit__note-title">{title()}</h1>
+        <NotePreview body={body()} />
+      </div>
+    </div>
+  );
+}
+
+export { NoteEdit };
+```
 … to be continued.
