@@ -50,7 +50,7 @@ const editAction = action(async (data: FormData) => {
 		throw new Error('Malformed edit-action. note params');
 
 	const id = noteId.length > 0 ? noteId : undefined;
-	if (intent === 'insert' || intent === 'update') {
+	if (intent === 'new' || intent === 'update') {
 		const note = await upsertNt(title, body, id);
 		// navigate to `/notes/:id` if note was returned
 		// otherwise navigate to `/`

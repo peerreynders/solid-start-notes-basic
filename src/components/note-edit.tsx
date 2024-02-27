@@ -1,12 +1,11 @@
 // file: src/components/note-edit.tsx
 import { createSignal, Show } from 'solid-js';
 import { useLocation } from '@solidjs/router';
-import { NotePreview } from './note-preview';
-import { useSendLastEdit } from './app-context';
-import { editAction } from '../api';
+import { toLastEdit, type EditIntent } from '../types';
 import { toRootpath } from '../route-path';
-
-import type { EditIntent } from '../types';
+import { editAction } from '../api';
+import { useSendLastEdit } from './app-context';
+import { NotePreview } from './note-preview';
 
 type Props = {
 	noteId: string | undefined;
@@ -14,22 +13,32 @@ type Props = {
 	initialBody: string | undefined;
 };
 
+// remove `undefined` from setter argument union type
+type UpdatePair<T> = [
+	updated: () => T | undefined,
+	setter: (updated: Exclude<T, undefined>) => void,
+];
+type TextUpdate = string | undefined;
+type TextUpdatePair = UpdatePair<TextUpdate>;
+
 const maybeNoteId = (maybe: string | undefined) =>
 	typeof maybe === 'string' && maybe.length > 0 ? maybe : undefined;
 
 function NoteEdit(props: Props) {
 	const isUpdate = () => Boolean(maybeNoteId(props.noteId));
 	const [intent, setIntent] = createSignal<EditIntent>(
-		isUpdate() ? 'update' : 'insert'
+		isUpdate() ? 'update' : 'new'
 	);
 	const [busy, setBusy] = createSignal(false);
-
-	const [editedTitle, setTitle] = createSignal(props.initialTitle);
-	const title = () => {
-		const title = editedTitle();
-		// follow reactive prop in case initially undefined
-		return title !== undefined ? title : props.initialTitle ?? '';
-	};
+	const [updatedTitle, setTitle] = createSignal<TextUpdate>(
+		undefined
+	) as TextUpdatePair;
+	const [updatedBody, setBody] = createSignal<TextUpdate>(
+		undefined
+	) as TextUpdatePair;
+	// follow reactive prop while no edit has taken place
+	const title = () => updatedTitle() ?? props.initialTitle ?? '';
+	const body = () => updatedBody() ?? props.initialBody ?? '';
 
 	const titleListener = (
 		e: InputEvent & {
@@ -39,13 +48,6 @@ function NoteEdit(props: Props) {
 	) => {
 		e.stopPropagation();
 		setTitle(e.currentTarget.value);
-	};
-
-	const [updatedBody, setBody] = createSignal(props.initialBody);
-	const body = () => {
-		const body = updatedBody();
-		// follow reactive prop in case initially undefined
-		return body !== undefined ? body : props.initialBody ?? '';
 	};
 
 	const bodyListener = (
@@ -59,8 +61,11 @@ function NoteEdit(props: Props) {
 	};
 
 	const location = useLocation();
-	const { sendLastEdit } = useSendLastEdit();
+	const { sendLastEdit: send } = useSendLastEdit();
 	let noteForm: HTMLFormElement | undefined;
+	// clear app-context
+	send(undefined);
+
 	const saveNote = (
 		e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }
 	) => {
@@ -73,9 +78,7 @@ function NoteEdit(props: Props) {
 		//
 		// inform the rest of the application
 		// of impending `new` or `edit`
-		const id = maybeNoteId(props.noteId);
-		sendLastEdit(id ? ['update', id] : ['new']);
-
+		send(toLastEdit(intent(), maybeNoteId(props.noteId)));
 		noteForm.requestSubmit();
 	};
 
@@ -91,13 +94,10 @@ function NoteEdit(props: Props) {
 		setIntent('delete');
 		// inform the rest of the application
 		// of impending delete
-		sendLastEdit(['delete', id]);
+		send(toLastEdit(intent(), id));
 		// submit editAction
 		noteForm.requestSubmit();
 	};
-
-	// clear signal
-	sendLastEdit(undefined);
 
 	return (
 		<div class="c-note-edit">

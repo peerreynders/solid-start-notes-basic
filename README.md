@@ -701,7 +701,7 @@ import {
   type ParentProps,
 } from 'solid-js';
 
-export type LastEdit = ['new'] | ['update', string] | ['delete', string];
+import type { LastEdit } from '../types';
 
 // Primitives over features …
 const [lastEdit, sendLastEdit] = createSignal<LastEdit | undefined>(undefined, {
@@ -1357,12 +1357,10 @@ The menu contains a “Done” button and for `update` edits a “Delete” butt
 ```tsx
 // file: src/components/note-edit.tsx
 // …
-import { NotePreview } from './note-preview';
+import { toRootpath } from '../route-path';
 import { editAction } from '../api';
 // …
-import { toRootpath } from '../route-path';
-
-// …
+import { NotePreview } from './note-preview';
 
 type Props = {
   noteId: string | undefined;
@@ -1453,4 +1451,157 @@ function NoteEdit(props: Props) {
 
 export { NoteEdit };
 ```
+
+`isUpdate` is implemented as a [derived signal](https://docs.solidjs.com/concepts/derived-values/derived-signals) based on the incoming `noteId` prop.The [`note-new`](#note-new) route component supplies an `undefined` `noteId` while [`note`](#note) supplies it from the route parameters.
+For the lifetime of the component `noteId` (and by extension `isUpdate`) isn't expected to change despite the fact that all props are reactive.
+
+The `intent` Accessor is initialized `isUpdate` which the help of `isUpdate` setting it to either `EditIntent` type `new` or `update`. 
+The signal's setter creates the opportunity to change it to `delete` instead which is used by the delete capability.
+
+The `busy` signal is used to disable the action controls once an action has been intiated.
+
+Both the `initialTitle` and `initialBody` props can be `undefined` in the [`note`](#note) route component use case.
+
+The goal is to be able to set up the full fragment of the component DOM in the background (hidden by a router initiated transition) while the data to be placed into the fragment hasn't arrived yet; in other words both `initialTitle` and `initialBody` are still *unknown*.
+There are 3 phases to the *final* title and body:
+- Initially the *initial* value is (potentially) *unknown*; the incoming prop being `undefined` indicates this state. 
+Here the *final* value should appear as an empty string.
+This is an arbitrary decision as the component content at this point is still hidden by the transition.
+- When the transition completes the prop will change to the *true initial value*. Before any edits take place the *known* initial value is the *final* value.
+- Once an edit takes place that value (and every subsequent edit) becomes the *final* value.
+
+This is expressed by:
+
+```TypeScript
+const [updatedBody, setBody] = createSignal<TextUpdate>(undefined) as TextUpdatePair ;
+const body = () => updatedBody() ?? props.initialBody ?? '';
+```
+
+```TypeScript
+// file: src/components/note-edit.tsx
+import { createSignal, Show } from 'solid-js';
+// …
+import { toLastEdit, type EditIntent} from '../types';
+// …
+
+type Props = {
+  noteId: string | undefined;
+  initialTitle: string | undefined;
+  initialBody: string | undefined;
+};
+
+// remove `undefined` from setter argument union type
+type UpdatePair<T> = [updated: () => T | undefined, setter: (updated: Exclude<T, undefined>) => void];
+type TextUpdate = string | undefined;
+type TextUpdatePair = UpdatePair<TextUpdate>;
+
+const maybeNoteId = (maybe: string | undefined) =>
+  typeof maybe === 'string' && maybe.length > 0 ? maybe : undefined;
+
+function NoteEdit(props: Props) {
+  const isUpdate = () => Boolean(maybeNoteId(props.noteId));
+  const [intent, setIntent] = createSignal<EditIntent>(
+    isUpdate() ? 'update' : 'new'
+  );
+  const [busy, setBusy] = createSignal(false);
+  const [updatedTitle, setTitle] = createSignal<TextUpdate>(undefined) as TextUpdatePair;
+  const [updatedBody, setBody] = createSignal<TextUpdate>(undefined) as TextUpdatePair ;
+  // follow reactive prop while no edit has taken place
+  const title = () => updatedTitle() ?? props.initialTitle ?? '';
+  const body = () => updatedBody() ?? props.initialBody ?? '';
+
+  // …
+}
+```
+
+Both `titleListener` and `bodyListener` update their respective “updated” signals whenever the input control [fires](https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event).
+The updated values synchronously propagate via [derived signals](https://docs.solidjs.com/concepts/derived-values/derived-signals); `title()` which drives the [heading element](https://developer.mozilla.org/en-US/docs/Web/API/HTMLHeadingElement) and `body()` which propagates in the [`note-preview`](#note-preview) component.
+
+```TypeScript
+// file: src/components/note-edit.tsx
+// …
+
+function NoteEdit(props: Props) {
+  // …
+
+  const titleListener = (
+    e: InputEvent & {
+      currentTarget: HTMLInputElement;
+      target: HTMLInputElement;
+    }
+  ) => {
+    e.stopPropagation();
+    setTitle(e.currentTarget.value);
+  };
+
+  const bodyListener = (
+    e: InputEvent & {
+      currentTarget: HTMLTextAreaElement;
+      target: HTMLTextAreaElement;
+    }
+  ) => {
+    e.stopPropagation();
+    setBody(e.currentTarget.value);
+  };
+
+  // …
+}
+
+```
+```TypeScript
+// file: src/components/note-edit.tsx
+// …
+import { useLocation } from '@solidjs/router';
+import { toLastEdit, type EditIntent} from '../types';
+// …
+import { editAction } from '../api';
+import { useSendLastEdit } from './app-context';
+// …
+
+
+function NoteEdit(props: Props) {
+  // …
+  const location = useLocation();
+  const { sendLastEdit: send } = useSendLastEdit();
+  let noteForm: HTMLFormElement | undefined;
+  // clear app-context
+  send(undefined);
+
+  const saveNote = (
+    e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }
+  ) => {
+    if (!noteForm) return;
+
+    setBusy(true);
+    e.stopPropagation();
+    // `intent()` informs editAction whether to
+    // perform `insert` (new) or `update` (edit)
+    //
+    // inform the rest of the application
+    // of impending `new` or `edit`
+    send(toLastEdit(intent(), maybeNoteId(props.noteId)));
+    noteForm.requestSubmit();
+  };
+
+  const deleteNote = (
+    e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }
+  ) => {
+    const id = maybeNoteId(props.noteId);
+    if (!(noteForm && id)) return;
+
+    setBusy(true);
+    e.stopPropagation();
+    // inform editAction to perform delete
+    setIntent('delete');
+    // inform the rest of the application
+    // of impending delete
+    send(toLastEdit(intent(), id));
+    // submit editAction
+    noteForm.requestSubmit();
+  };
+
+  // …
+}
+```
+
 … to be continued.

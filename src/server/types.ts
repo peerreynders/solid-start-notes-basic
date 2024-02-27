@@ -1,19 +1,7 @@
 // file: src/server/types.ts
+import type { Note, NoteInsert, NoteUpdate, NoteBrief } from '../types-note';
+
 export type Content = [title: string, body: string][];
-
-export type NoteInsert = {
-	title: string;
-	body: string;
-};
-
-export type NoteUpdate = {
-	id: string;
-} & NoteInsert;
-
-export type Note = NoteUpdate & {
-	createdAt: number;
-	updatedAt: number;
-};
 
 export type NotePersistInsert = {
 	excerpt: string;
@@ -41,21 +29,30 @@ const makeNoteStore = (notes: NotePersist[]) =>
 
 export type NoteStore = ReturnType<typeof makeNoteStore>;
 
-const toNoteBrief = (note: NotePersist) => ({
-	id: note.id,
-	title: note.title,
-	updatedAt: note.updatedAt,
-	summary: note.excerpt,
-});
+function toNoteBrief(note: NotePersist) {
+	// Leverage excess property checking
+	// https://www.typescriptlang.org/docs/handbook/2/objects.html#excess-property-checks
+	const brief: NoteBrief = {
+		id: note.id,
+		title: note.title,
+		updatedAt: note.updatedAt,
+		summary: note.excerpt,
+	};
 
-export type NoteBrief = ReturnType<typeof toNoteBrief>;
+	return brief;
+}
 
-const toNote = (note: NotePersist) => ({
-	id: note.id,
-	title: note.title,
-	body: note.body,
-	createdAt: note.createdAt,
-	updatedAt: note.updatedAt,
-});
+function toNote(note: NotePersist) {
+	// Leverage excess property checking
+	const bare: Note = {
+		id: note.id,
+		title: note.title,
+		body: note.body,
+		createdAt: note.createdAt,
+		updatedAt: note.updatedAt,
+	};
+
+	return bare;
+}
 
 export { makeNoteStore, toNote, toNoteBrief };
