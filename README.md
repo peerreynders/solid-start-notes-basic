@@ -1515,7 +1515,7 @@ function NoteEdit(props: Props) {
 ```
 
 Both `titleListener` and `bodyListener` update their respective “updated” signals whenever the input control [fires](https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event).
-The updated values synchronously propagate via [derived signals](https://docs.solidjs.com/concepts/derived-values/derived-signals); `title()` which drives the [heading element](https://developer.mozilla.org/en-US/docs/Web/API/HTMLHeadingElement) and `body()` which propagates in the [`note-preview`](#note-preview) component.
+The updated values synchronously propagate via [derived signals](https://docs.solidjs.com/concepts/derived-values/derived-signals); `title()` which drives the [heading element](https://developer.mozilla.org/en-US/docs/Web/API/HTMLHeadingElement) and `body()` which propagates into the [`note-preview`](#note-preview) component.
 
 ```TypeScript
 // file: src/components/note-edit.tsx
@@ -1546,8 +1546,22 @@ function NoteEdit(props: Props) {
 
   // …
 }
-
 ```
+
+The click handlers for the “Done” (`saveNote`) and “Delete” (`deleteNote`) button are similar. 
+After verifying the preconditions (a set `noteForm` element reference and the `noteId` for existing notes) the `busy()` signal is turned on (disabling the listening elements) and the global `lastEdit` signal is used to communicate the action about to be requested to the rest of the application (to [`brief-list`](#brief-list) specifically). 
+
+Finally [`requestSubmit()`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/requestSubmit) initiates the edit action.
+The values inside the form determine the nature of the action:
+- `id`: hidden value which follows `props.noteId` but will be an empty string for a `new` note.  
+- `from`: hidden value which follows [`pathname`](https://developer.mozilla.org/en-US/docs/Web/API/URL/pathname) + [`search`](https://developer.mozilla.org/en-US/docs/Web/API/URL/search) derived from [`location`](https://docs.solidjs.com/reference/solid-router/primitives/use-location).
+The action uses it to formulate the following redirect URL.
+- `intent`: hidden value which follows the `intent()` signal.
+Initially set to `new` when `props.noteId` is `undefined` or set to `update` otherwise.
+Forced to `delete` (from `update`) by the `deleteNote` handler. In effect acts as the RPC discriminator; selects which action to perform. 
+- `title`: the latest edit of the note title directly from the form (`title()` signal exists to drive the `note-preview` prop).
+- `note`: the latest edit of the note body directly from the form (`body()` signal exists to drive the `note-preview` prop). 
+
 ```TypeScript
 // file: src/components/note-edit.tsx
 // …
@@ -1604,4 +1618,89 @@ function NoteEdit(props: Props) {
 }
 ```
 
-… to be continued.
+`editAction` is bound to the [`action`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#action) [prop](https://facebook.github.io/jsx/#sec-jsx-attributes) of the form's [JSX](https://facebook.github.io/jsx/).
+`editAction` still executes on the client side; it's `upsertNote` and `deleteNote` which are remotely marshalled over [solid-start's RPC mechanism](https://start.solidjs.com/api/server).
+
+The form's data is accessed via the [`FormData` mechanism](https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData#form).
+The makes it necessary validate/reconstitute the data from the `FormData`'s string based key/value pairs; in particular: `id`, `from`, `intent`, `title` and `body`. 
+
+`new` and `update` are directed to `upsertNote`. 
+Typically a note with its ID is returned in which case the redirect will lead to the note URL; in case of an error from the server the redirect will simply go to the home URL.
+The `briefs` cache needs to be [`revalidate`](https://docs.solidjs.com/reference/solid-router/data-apis/cache)d as the edit may have modified aspects of a note that impact parts of a brief that is already part of the current search result or created a new note that should be part of the current briefs search result. 
+
+`delete` directs to `deleteNote`.
+The `briefs` cache needs to be `revalidiate`d given that the deleted note likely appeared as a brief on the list.
+Finally the app is redirected to the home route while leaving the search parameters intact. 
+
+```TypeScript
+// file: src/api.ts
+import { action, cache, redirect, revalidate } from '@solidjs/router';
+import {
+  searchFromRootpath,
+  rootpathToHome,
+  rootpathWithNote,
+} from './route-path';
+import {
+  deleteNote as deleteNt,
+  getBriefs as getBf,
+  getNote as getNt,
+  upsertNote as upsertNt,
+} from './server/api';
+import { isEditIntent } from './types';
+
+// …
+const NAME_GET_BRIEFS = 'briefs';
+const NAME_GET_NOTE = 'note';
+// …
+
+const editAction = action(async (data: FormData) => {
+  const intent = data.get('intent');
+  if (typeof intent !== 'string' || !isEditIntent(intent))
+    throw new Error(`Malformed edit-action. "intent" param: :${intent}`);
+
+  const from = data.get('from');
+  if (typeof from !== 'string' || from.length < 1)
+    throw new Error(`Malformed edit-action. "from" param: :${from}`);
+  const search = searchFromRootpath(from);
+
+  const noteId = data.get('id') ?? '';
+  const title = data.get('title') ?? '';
+  const body = data.get('body') ?? '';
+  if (
+    typeof noteId !== 'string' ||
+    typeof title !== 'string' ||
+    typeof body !== 'string'
+  )
+    throw new Error('Malformed edit-action. note params');
+
+  const id = noteId.length > 0 ? noteId : undefined;
+  if (intent === 'new' || intent === 'update') {
+    const note = await upsertNt(title, body, id);
+    // navigate to `/notes/:id` if note was returned
+    // otherwise navigate to `/`
+    const path = note
+      ? rootpathWithNote(note.id, search)
+      : rootpathToHome(search);
+
+    // - A new note may now need to appear in the briefs
+    // - An existing note's title (or excerpt) could have changed
+    // i.e.  briefs need to be reloaded even if the
+    // search param didn't change
+    revalidate(NAME_GET_BRIEFS, true);
+
+    throw redirect(path);
+  }
+
+  if (intent === 'delete') {
+    if (!id) throw new Error('edit-action: cannot delete without ID');
+
+    await deleteNt(id);
+    // - after delete note may need to be removed from briefs (i.e. revalidate)
+    revalidate(NAME_GET_BRIEFS, true);
+    // - navigate to the home page
+    throw redirect(rootpathToHome(search));
+  }
+}, NAME_EDIT_ACTION);
+
+// …
+```
