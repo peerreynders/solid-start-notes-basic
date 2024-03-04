@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en-us">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<title>React RSC demo CSS reference</title>
+		<link rel="stylesheet" href="style.css" />
+		<script type="module" src="main.js"></script>
+		<style></style>
+	</head>
+	<body>
+		<!-- prettier-ignore -->
+		<script id="note-data" type="application/json">[{"id":"w6PS9E_fgnOMYnEyfHzno","title":"Meeting Notes","body":"This is an example note. It contains **Markdown**!","excerpt":"This is an example note. It contains Markdown!","html":"<p>This is an example note. It contains <strong>Markdown</strong>!</p>\n","createdAt":1709349242656,"updatedAt":1709349242656},{"id":"l3fdW2MshvG7GocvQ87Gx","title":"Make a thing","body":"It's very easy to make some words **bold** and other words *italic* with\nMarkdown. You can even [link to React's website!](https://www.reactjs.org).","excerpt":"It's very easy to make some words bold and other words italic with Markdown. You can even link to React's…","html":"<p>It's very easy to make some words <strong>bold</strong> and other words <em>italic</em> with\nMarkdown. You can even <a href=\"https://www.reactjs.org\">link to React's website!</a>.</p>\n","createdAt":1705960772962,"updatedAt":1705960772962},{"id":"PPmPBS-X25GfKTJLGU7B8","title":"A note with a very long title because sometimes you need more words","body":"You can write all kinds of [amazing](https://en.wikipedia.org/wiki/The_Amazing)\nnotes in this app! These note live on the server in the `notes` folder.\n\n![This app is powered by React](https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/React_Native_Logo.png/800px-React_Native_Logo.png)","excerpt":"You can write all kinds of amazing notes in this app! These note live on the server in the notes…","html":"<p>You can write all kinds of <a href=\"https://en.wikipedia.org/wiki/The_Amazing\">amazing</a>\nnotes in this app! These note live on the server in the <code>notes</code> folder.</p>\n<p><img src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/React_Native_Logo.png/800px-React_Native_Logo.png\" alt=\"This app is powered by React\" /></p>\n","createdAt":1705590594948,"updatedAt":1705590594948},{"id":"e0MhnDzAMRJ_-VELlL9Yt","title":"I wrote this note today","body":"It was an excellent note.","excerpt":"It was an excellent note.","html":"<p>It was an excellent note.</p>\n","createdAt":1705316899688,"updatedAt":1705316899688}]</script>
+		<template id="app">
+			<div class="main">
+				<section class="col sidebar">
+					<section class="sidebar-header">
+						<img
+							class="logo"
+							src="logo.svg"
+							width="22px"
+							height="20px"
+							alt=""
+							role="presentation"
+						/>
+						<strong>React Notes</strong>
+					</section>
+					<section class="sidebar-menu" role="menubar"></section>
+					<nav></nav>
+				</section>
+				<section class="col note-viewer"></section>
+			</div>
+		</template>
+		<template id="search-field">
+			<form class="search" role="search">
+				<label class="offscreen" for="sidebar-search-input">
+					Search for a note by title
+				</label>
+				<input id="sidebar-search-input" placeholder="Search" />
+			</form>
+		</template>
+		<template id="spinner">
+			<div class="spinner" role="progressbar" aria-busy="false"></div>
+		</template>
+		<template id="edit-button">
+			<button class="edit-button edit-button--solid" role="menuitem"></button>
+		</template>
+		<template id="note-list">
+			<ul class="notes-list">
+				<li></li>
+			</ul>
+		</template>
+		<template id="note-list__empty">
+			<div class="notes-empty"></div>
+		</template>
+		<template id="note-list__skeleton">
+			<div>
+				<ul class="notes-list skeleton-container">
+					<li class="v-stack">
+						<div
+							class="sidebar-note-list-item skeleton"
+							style="height: 5em"
+						></div>
+					</li>
+					<li class="v-stack">
+						<div
+							class="sidebar-note-list-item skeleton"
+							style="height: 5em"
+						></div>
+					</li>
+					<li class="v-stack">
+						<div
+							class="sidebar-note-list-item skeleton"
+							style="height: 5em"
+						></div>
+					</li>
+				</ul>
+			</div>
+		</template>
+		<template id="sidebar-note">
+			<div class="sidebar-note-list-item">
+				<header class="sidebar-note-header">
+					<strong></strong>
+					<small></small>
+				</header>
+				<button class="sidebar-note-open" style="border: 1px solid transparent">
+					Open note for preview
+				</button>
+				<button class="sidebar-note-toggle-expand">
+					<img src="chevron-up.svg" width="10px" height="10px" alt="Expand" />
+					<img
+						src="chevron-down.svg"
+						width="10px"
+						height="10px"
+						alt="Collapse"
+					/>
+				</button>
+				<p class="sidebar-note-excerpt"><i>(No content)</i></p>
+			</div>
+		</template>
+		<template id="note__none">
+			<div class="note--empty-state">
+				<span class="note-text--empty-state"
+					>Click a note on the left to view something! 🥺</span
+				>
+			</div>
+		</template>
+		<template id="note">
+			<div class="note">
+				<div class="note-header">
+					<h1 class="note-title"></h1>
+					<div class="note-menu" role="menubar">
+						<small class="note-updated-at" role="status">Last updated on</small>
+					</div>
+				</div>
+			</div>
+		</template>
+		<template id="note__skeleton">
+			<div class="note skeleton-container" role="progressbar" aria-busy="true">
+				<div class="note-header">
+					<div
+						class="note-title skeleton"
+						style="height: 3rem; width: 65%; margin-inline: 12px 1em"
+					></div>
+					<div
+						class="skeleton skeleton--button"
+						style="width: 8em; height: 2.5em"
+					></div>
+				</div>
+				<div class="note-preview">
+					<div class="skeleton v-stack" style="height: 1.5em"></div>
+					<div class="skeleton v-stack" style="height: 1.5em"></div>
+					<div class="skeleton v-stack" style="height: 1.5em"></div>
+					<div class="skeleton v-stack" style="height: 1.5em"></div>
+					<div class="skeleton v-stack" style="height: 1.5em"></div>
+				</div>
+			</div>
+		</template>
+		<template id="note-preview">
+			<div class="note-preview">
+				<div class="text-with-markdown"></div>
+			</div>
+		</template>
+		<template id="note-edit">
+			<div class="note-editor">
+				<form class="note-editor-form" autocomplete="off">
+					<label class="offscreen" for="note-title-input"
+						>Enter a title for your note</label
+					>
+					<input id="note-title-input" type="text" value="" />
+					<label class="offscreen" for="note-body-input"
+						>Enter the body for your note</label
+					>
+					<textarea id="note-body-input"></textarea>
+				</form>
+				<div class="note-editor-preview">
+					<div class="note-editor-menu" role="menubar">
+						<button class="note-editor-done" role="menuitem">
+							<img
+								src="checkmark.svg"
+								width="14px"
+								height="10px"
+								alt=""
+								role="presentation"
+							/>
+							Done
+						</button>
+						<button class="note-editor-delete" role="menuitem">
+							<img
+								src="cross.svg"
+								width="10px"
+								height="10px"
+								alt=""
+								role="presentation"
+							/>
+							Delete
+						</button>
+					</div>
+					<div class="label label--preview" role="status">Preview</div>
+					<h1 class="note-title"></h1>
+				</div>
+			</div>
+		</template>
+		<template id="note-edit__skeleton">
+			<div
+				class="note-editor skeleton-container"
+				role="progressbar"
+				aria-busy="true"
+			>
+				<div class="note-editor-form">
+					<div class="skeleton v-stack" style="height: 3rem"></div>
+					<div class="skeleton v-stack" style="height: 100%"></div>
+				</div>
+				<div class="note-editor-preview">
+					<div class="note-editor-menu">
+						<div
+							class="skeleton skeleton--button"
+							style="width: 8em; height: 2.5em"
+						></div>
+						<div
+							class="skeleton skeleton--button"
+							style="width: 8em; height: 2.5em; margin-inline: 12px 0"
+						></div>
+					</div>
+					<div
+						class="note-title skeleton"
+						style="height: 3rem; width: 65%; margin-inline: 12px 1em"
+					></div>
+					<div class="note-preview">
+						<div class="skeleton v-stack" style="height: 1.5em"></div>
+						<div class="skeleton v-stack" style="height: 1.5em"></div>
+						<div class="skeleton v-stack" style="height: 1.5em"></div>
+						<div class="skeleton v-stack" style="height: 1.5em"></div>
+						<div class="skeleton v-stack" style="height: 1.5em"></div>
+					</div>
+				</div>
+			</div>
+		</template>
+	</body>
+</html>
