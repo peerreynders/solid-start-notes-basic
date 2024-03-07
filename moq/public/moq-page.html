@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en-us">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<title>SolidJS Notes CSS moq</title>
+		<link rel="stylesheet" href="/style.css" />
+		<script type="module" src="/main.js"></script>
+		<style></style>
+	</head>
+	<body>
+		<!-- prettier-ignore -->
+		<script id="note-data" type="application/json">[{"id":"SRtRIP3Z1kRRY1Vc09qEp","title":"Meeting Notes","body":"This is an example note. It contains **Markdown**!","excerpt":"This is an example note. It contains Markdown!","html":"<p>This is an example note. It contains <strong>Markdown</strong>!</p>\n","createdAt":1708646993417,"updatedAt":1708646993417},{"id":"lUV9_Dl_3oWvG8-2qQC1n","title":"Make a thing","body":"It's very easy to make some words **bold** and other words *italic* with\nMarkdown. You can even [link to SolidStart's website!](https://start.solidjs.com/).","excerpt":"It's very easy to make some words bold and other words italic with Markdown. You can even link to SolidStart's…","html":"<p>It's very easy to make some words <strong>bold</strong> and other words <em>italic</em> with\nMarkdown. You can even <a href=\"https://start.solidjs.com/\">link to SolidStart's website!</a>.</p>\n","createdAt":1706568371951,"updatedAt":1706568371951},{"id":"GFLhs2GDasr-bk1kqN2b_","title":"A note with a very long title because sometimes you need more words","body":"You can write all kinds of [amazing](https://en.wikipedia.org/wiki/The_Amazing) notes in this app! These notes live on the server in the `.data/notes` file.\n![This app is powered by SolidStart](https://assets.solidjs.com/banner?project=Start&amp;type=core)","excerpt":"You can write all kinds of amazing notes in this app! These notes live on the server in the .data/notes…","html":"<p>You can write all kinds of <a href=\"https://en.wikipedia.org/wiki/The_Amazing\">amazing</a> notes in this app! These notes live on the server in the <code>.data/notes</code> file.\n<img src=\"https://assets.solidjs.com/banner?project=Start&amp;type=core\" alt=\"This app is powered by SolidStart\" /></p>\n","createdAt":1704958759774,"updatedAt":1704958759774},{"id":"HhJLtO9DAB-99uXw6f75r","title":"I wrote this note today","body":"It was an excellent note.","excerpt":"It was an excellent note.","html":"<p>It was an excellent note.</p>\n","createdAt":1704528188382,"updatedAt":1704528188382}]</script>
+		<template id="app">
+			<main class="c-main">
+				<section class="c-sidebar c-main__column">
+					<section class="c-sidebar__header">
+						<img
+							class="c-logo"
+							src="/logo.svg"
+							width="22px"
+							height="20px"
+							alt=""
+							role="presentation"
+						/>
+						<strong>Solid Notes</strong>
+					</section>
+					<section class="c-sidebar__menu" role="menubar"></section>
+				</section>
+				<section class="c-note-view c-main__column"></section>
+			</main>
+		</template>
+		<template id="search-field">
+			<form class="c-search-field" role="search">
+				<label class="u-offscreen" for="search-field__search">
+					Search for a note by title
+				</label>
+				<input id="search-field__search" placeholder="Search" />
+				<div class="c-spinner" role="progressbar" aria-busy="false"></div>
+			</form>
+		</template>
+		<template id="edit-button">
+			<button class="c-edit-button"></button>
+		</template>
+		<template id="brief-list">
+			<nav>
+				<ul class="c-brief-list">
+					<li></li>
+				</ul>
+			</nav>
+		</template>
+		<template id="brief-list__empty">
+			<div class="c-brief-empty"></div>
+		</template>
+		<template id="note">
+			<div class="c-note">
+				<div class="c-note__header">
+					<h1></h1>
+					<div class="c-note__menu" role="menubar">
+						<small class="c-note__updated" role="status">
+							Last updated on <time></time>
+						</small>
+					</div>
+				</div>
+			</div>
+		</template>
+		<template id="brief">
+			<div class="js:c-brief c-brief">
+				<header>
+					<strong></strong>
+					<time></time>
+				</header>
+				<input
+					id="brief__summary-state__"
+					type="checkbox"
+					class="c-brief__summary-state"
+				/>
+				<button class="js:c-brief__open c-brief__open">
+					Open note for preview
+				</button>
+				<label for="brief__summary-state__" class="c-brief__summary-toggle">
+					<svg
+						viewBox="0 0 512 512"
+						aria-hidden="true"
+						fill="currentColor"
+						width="1em"
+						height="1em"
+					>
+						<path d="M60 99.333l196 196 196-196 60 60-256 256-256-256z"></path>
+					</svg>
+				</label>
+				<p class="c-brief__summary">
+					<span class="c-brief__no-content">(No Content)</span>
+				</p>
+			</div>
+		</template>
+		<template id="note-none">
+			<div class="c-note-none">
+				<span>Click a note on the left to view something! 🥺</span>
+			</div>
+		</template>
+		<template id="note-preview">
+			<div class="c-note-preview">
+				<div class="o-from-markdown"></div>
+			</div>
+		</template>
+		<template id="note-edit">
+			<div class="c-note-edit">
+				<form class="c-note-edit__form">
+					<label class="u-offscreen" for="note-edit__title"
+						>Enter a title for your note</label
+					>
+					<input id="note-edit__title" type="text" name="title" />
+					<label class="u-offscreen" for="note-edit__body"
+						>Enter the body for your note</label
+					>
+					<textarea id="note-edit__body" name="body"></textarea>
+				</form>
+				<div class="c-note-edit__preview">
+					<div class="c-note-edit__menu" role="menubar">
+						<button class="c-note-edit__done" role="menuitem">
+							<img
+								src="/checkmark.svg"
+								width="14px"
+								height="10px"
+								alt=""
+								role="presentation"
+							/>
+							Done
+						</button>
+						<button class="c-note-edit__delete" role="menuitem">
+							<img
+								src="/cross.svg"
+								width="10px"
+								height="10px"
+								alt=""
+								role="presentation"
+							/>
+							Delete
+						</button>
+					</div>
+					<div class="c-note-edit__label-preview" role="status">Preview</div>
+					<h1 class="c-note-edit__note-title"></h1>
+				</div>
+			</div>
+		</template>
+	</body>
+</html>

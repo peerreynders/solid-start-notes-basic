@@ -1,0 +1,36 @@
+{
+	"name": "reference",
+	"version": "0.0.0",
+	"description": "",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"seed": "node seed-data.js",
+		"serve": "node index.js",
+		"build": "./node_modules/.bin/rollup -c rollup.config.mjs",
+		"format": "prettier . --write",
+		"lint:types": "./node_modules/.bin/tsc --noEmit -p src/tsconfig.json",
+		"server:types": "./node_modules/.bin/tsc --noEmit -p tsconfig.json"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"polka": "^0.5.2",
+		"regexparam": "^3.0.0",
+		"sirv": "^2.0.4"
+	},
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^25.0.7",
+		"@rollup/plugin-node-resolve": "^15.2.3",
+		"@rollup/plugin-terser": "^0.4.4",
+		"@types/node": "^20.11.24",
+		"@types/polka": "^0.5.7",
+		"@types/sanitize-html": "^2.11.0",
+		"marked": "^12.0.1",
+		"prettier": "^3.2.5",
+		"rollup": "^4.12.1",
+		"sanitize-html": "^2.12.1",
+		"typescript": "^5.3.3"
+	}
+}

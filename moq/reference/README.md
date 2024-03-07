@@ -3,7 +3,7 @@ A moq (mock-up/maquette) page to explore the [React Server Components Demo](http
 It serves as the visual reference implementation for the port's styling with [Sass](https://sass-lang.com/).
 
 Rather than launching the full React application this is just a page that cobbles together the DOM client side from [`<template>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template) elements based on what it finds in [`location.href`](https://developer.mozilla.org/en-US/docs/Web/API/Location/href).
-The server is used to handle [`Cache-Control`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers; discouraging the caching of assets that are intentionally volatile while encouraging caching of the rest. 
+The server is used to handle [`Cache-Control`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) headers; discouraging the caching of assets that are intentionally volatile while encouraging caching of the rest.
 
 ```shell
 $ pnpm i
